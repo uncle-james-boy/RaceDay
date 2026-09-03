@@ -64,3 +64,14 @@ CREATE TABLE dbo.Enrolments (
     CONSTRAINT FK_Enrolments_Categories FOREIGN KEY (CategoryID) REFERENCES dbo.Categories(CategoryID)
 );
 GO
+
+-- 5. Create Results Table
+CREATE TABLE dbo.Results (
+    ResultID INT IDENTITY(1,1) PRIMARY KEY,
+    EnrolmentID INT NOT NULL UNIQUE,
+    FinishTime VARCHAR(20) NOT NULL,
+    Position INT NOT NULL,
+    CapturedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Results_Enrolments FOREIGN KEY (EnrolmentID) REFERENCES dbo.Enrolments(EnrolmentID)
+);
+GO

@@ -26,8 +26,9 @@ jobs:
     - name: Markdown Lint Check
       uses: avto-dev/markdown-lint@v1
       with:
+        config: '.markdownlint.json'
         args: 'README.md docs/API_Endpoint_Plan.md'
-        
+
     - name: SQL Syntax Validation (Mock Check)
       run: |
         echo "Validating T-SQL syntax presence..."

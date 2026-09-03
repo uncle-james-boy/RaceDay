@@ -43,4 +43,4 @@ Review the full API routing plan, including HTTP methods, role-based access cont
 
 Watch the architectural walkthrough and technical demonstration of Part 1:
 
-👉 **[RaceDay Part 1 - Architectural Walkthrough](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)**
+👉 **[YouTube Video Presentation Placeholder]** *(Link to be updated post-recording)*

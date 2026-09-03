@@ -75,3 +75,15 @@ CREATE TABLE dbo.Results (
     CONSTRAINT FK_Results_Enrolments FOREIGN KEY (EnrolmentID) REFERENCES dbo.Enrolments(EnrolmentID)
 );
 GO
+
+-- =============================================
+-- Seed Data Generation
+-- =============================================
+
+-- Insert Users (1 Organiser, 2 Participants)
+INSERT INTO dbo.Users (FullName, Email, PasswordHash, Role)
+VALUES 
+('Sarah Jenkins', 'sarah.jenkins@raceday.com', '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36PfLzEg', 'Organiser'),
+('Marcus Wright', 'marcus.wright@email.com', '$2a$10$hash_participant_marcus_88492', 'Participant'),
+('Elena Rodriguez', 'elena.r@runnershub.com', '$2a$10$hash_participant_elena_10938', 'Participant');
+GO

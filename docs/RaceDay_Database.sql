@@ -22,3 +22,19 @@ CREATE TABLE dbo.Users (
     CreatedAt DATETIME DEFAULT GETDATE()
 );
 GO
+
+-- 2. Create Events Table
+CREATE TABLE dbo.Events (
+    EventID INT IDENTITY(1,1) PRIMARY KEY,
+    OrganiserID INT NOT NULL,
+    Name VARCHAR(150) NOT NULL,
+    Description TEXT NULL,
+    EventDate DATETIME NOT NULL,
+    Location VARCHAR(200) NOT NULL,
+    Distance DECIMAL(5,2) NOT NULL,
+    EventType VARCHAR(50) NOT NULL CHECK (EventType IN ('Marathon', 'Cycling', 'Trail Run')),
+    EventBannerUrl VARCHAR(500) NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Events_Users FOREIGN KEY (OrganiserID) REFERENCES dbo.Users(UserID)
+);
+GO

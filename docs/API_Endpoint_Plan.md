@@ -12,3 +12,4 @@
 | **POST** | `/api/results` | Organiser | Submits results for an enrolment. | `{"enrolmentId":"num","finishTime":"str","position":"num"}` | **201** Created<br>**400** Bad Request<br>**403** Forbidden<br>**404** Not Found |
 | **GET** | `/api/users/profile` | Authenticated | Retrieves user profile details. | *N/A* | **200** OK<br>**401** Unauthorized |
 | **PUT** | `/api/users/profile` | Authenticated | Updates user profile details. | `{"fullName":"str","profilePictureUrl":"str"}` | **200** OK<br>**400** Bad Request<br>**401** Unauthorized |
+

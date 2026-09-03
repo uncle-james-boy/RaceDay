@@ -1,12 +1,9 @@
-// RaceDay Event Management Platform - DBML Schema
-// Compatible with dbdiagram.io
-
 Table Users {
   UserID int [pk, increment]
   FullName varchar(100) [not null]
   Email varchar(150) [not null, unique]
   PasswordHash varchar(255) [not null]
-  Role varchar(20) [not null, note: 'Organiser' or 'Participant']
+  Role varchar(20) [not null, note: 'Organiser or Participant']
   ProfilePictureUrl varchar(500) [null]
   CreatedAt datetime [default: `GETDATE()`]
 }
@@ -19,7 +16,7 @@ Table Events {
   EventDate datetime [not null]
   Location varchar(200) [not null]
   Distance decimal(5,2) [not null]
-  EventType varchar(50) [not null, note: 'Marathon', 'Cycling', 'Trail Run']
+  EventType varchar(50) [not null, note: 'Marathon, Cycling or Trail Run']
   EventBannerUrl varchar(500) [null]
   CreatedAt datetime [default: `GETDATE()`]
 }
@@ -39,7 +36,7 @@ Table Enrolments {
   ParticipantID int [not null, ref: > Users.UserID]
   CategoryID int [not null, ref: > Categories.CategoryID]
   EnrolmentDate datetime [default: `GETDATE()`]
-  Status varchar(20) [not null, note: 'Pending', 'Confirmed', 'Cancelled']
+  Status varchar(20) [not null, note: 'Pending, Confirmed or Cancelled']
 }
 
 Table Results {
@@ -49,10 +46,3 @@ Table Results {
   Position int [not null]
   CapturedAt datetime [default: `GETDATE()`]
 }
-
-Ref: Events.OrganiserID > Users.UserID
-Ref: Categories.EventID > Events.EventID
-Ref: Enrolments.EventID > Events.EventID
-Ref: Enrolments.ParticipantID > Users.UserID
-Ref: Enrolments.CategoryID > Categories.CategoryID
-Ref: Results.EnrolmentID - Enrolments.EnrolmentID

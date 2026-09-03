@@ -102,3 +102,18 @@ VALUES
 (1, 'Community 10K', 12, NULL, 10.00),
 (2, 'Half-Trail Pro', 18, NULL, 21.10);
 GO
+
+-- Insert Enrolments (3 Enrolments)
+INSERT INTO dbo.Enrolments (EventID, ParticipantID, CategoryID, Status)
+VALUES 
+(1, 2, 1, 'Confirmed'), -- Marcus in Elite Marathon
+(1, 3, 2, 'Confirmed'), -- Elena in Community 10K
+(2, 2, 3, 'Pending');   -- Marcus in Half-Trail Pro
+GO
+
+-- Insert Results (2 Result Entries)
+INSERT INTO dbo.Results (EnrolmentID, FinishTime, Position)
+VALUES 
+(1, '03:12:45', 1),
+(2, '00:45:10', 1);
+GO

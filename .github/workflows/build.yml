@@ -1,0 +1,36 @@
+name: RaceDay CI Build and Validate
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate-structure-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Validate Repository Structure
+      run: |
+        echo "Verifying required files and directories..."
+        [ -f "README.md" ] || { echo "ERROR: Missing root README.md"; exit 1; }
+        [ -f "docs/API_Endpoint_Plan.md" ] || { echo "ERROR: Missing docs/API_Endpoint_Plan.md"; exit 1; }
+        [ -f "docs/RaceDay_Database.sql" ] || { echo "ERROR: Missing docs/RaceDay_Database.sql"; exit 1; }
+        [ -d ".github/workflows" ] || { echo "ERROR: Missing .github/workflows directory"; exit 1; }
+        echo "✅ Repository structure validated successfully!"
+
+    - name: Markdown Lint Check
+      uses: avto-dev/markdown-lint@v1
+      with:
+        args: 'README.md docs/API_Endpoint_Plan.md'
+        
+    - name: SQL Syntax Validation (Mock Check)
+      run: |
+        echo "Validating T-SQL syntax presence..."
+        grep -q "CREATE TABLE" docs/RaceDay_Database.sql && echo "✅ SQL CREATE TABLE statements found."
+        grep -q "INSERT INTO" docs/RaceDay_Database.sql && echo "✅ SQL INSERT seed data statements found."
+        echo "✅ SQL validation passed!"

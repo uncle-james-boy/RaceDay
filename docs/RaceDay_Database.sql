@@ -87,3 +87,18 @@ VALUES
 ('Marcus Wright', 'marcus.wright@email.com', '$2a$10$hash_participant_marcus_88492', 'Participant'),
 ('Elena Rodriguez', 'elena.r@runnershub.com', '$2a$10$hash_participant_elena_10938', 'Participant');
 GO
+
+-- Insert Events (2 Events created by Sarah)
+INSERT INTO dbo.Events (OrganiserID, Name, Description, EventDate, Location, Distance, EventType)
+VALUES 
+(1, 'Metro Spring Marathon 2026', 'Annual city marathon passing through the historic downtown district.', '2026-10-15 07:00:00', 'City Hall Plaza, Metro City', 42.19, 'Marathon'),
+(1, 'Alpine Trail Challenge', 'A challenging mountain trail run for seasoned athletes.', '2026-11-22 08:30:00', 'Pine Ridge National Park', 21.10, 'Trail Run');
+GO
+
+-- Insert Categories (3 Categories)
+INSERT INTO dbo.Categories (EventID, CategoryName, MinAge, MaxAge, Distance)
+VALUES 
+(1, 'Elite Full Marathon', 18, 65, 42.19),
+(1, 'Community 10K', 12, NULL, 10.00),
+(2, 'Half-Trail Pro', 18, NULL, 21.10);
+GO

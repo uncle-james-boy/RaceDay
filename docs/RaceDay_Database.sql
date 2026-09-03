@@ -38,3 +38,29 @@ CREATE TABLE dbo.Events (
     CONSTRAINT FK_Events_Users FOREIGN KEY (OrganiserID) REFERENCES dbo.Users(UserID)
 );
 GO
+
+-- 3. Create Categories Table
+CREATE TABLE dbo.Categories (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    EventID INT NOT NULL,
+    CategoryName VARCHAR(100) NOT NULL,
+    MinAge INT NULL,
+    MaxAge INT NULL,
+    Distance DECIMAL(5,2) NULL,
+    CONSTRAINT FK_Categories_Events FOREIGN KEY (EventID) REFERENCES dbo.Events(EventID)
+);
+GO
+
+-- 4. Create Enrolments Table
+CREATE TABLE dbo.Enrolments (
+    EnrolmentID INT IDENTITY(1,1) PRIMARY KEY,
+    EventID INT NOT NULL,
+    ParticipantID INT NOT NULL,
+    CategoryID INT NOT NULL,
+    EnrolmentDate DATETIME DEFAULT GETDATE(),
+    Status VARCHAR(20) NOT NULL CHECK (Status IN ('Pending', 'Confirmed', 'Cancelled')),
+    CONSTRAINT FK_Enrolments_Events FOREIGN KEY (EventID) REFERENCES dbo.Events(EventID),
+    CONSTRAINT FK_Enrolments_Users FOREIGN KEY (ParticipantID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Enrolments_Categories FOREIGN KEY (CategoryID) REFERENCES dbo.Categories(CategoryID)
+);
+GO

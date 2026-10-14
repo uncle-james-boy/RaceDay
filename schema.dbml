@@ -1,48 +1,77 @@
+Project RaceDay {
+  database_type: 'SQL Server'
+  Note: 'Part 1 model for the RaceDay event management platform.'
+}
+
 Table Users {
   UserID int [pk, increment]
   FullName varchar(100) [not null]
   Email varchar(150) [not null, unique]
   PasswordHash varchar(255) [not null]
   Role varchar(20) [not null, note: 'Organiser or Participant']
-  ProfilePictureUrl varchar(500) [null]
-  CreatedAt datetime [default: `GETDATE()`]
+  ProfilePictureUrl varchar(500)
+  CreatedAt datetime [not null, default: `GETDATE()`]
 }
 
 Table Events {
   EventID int [pk, increment]
   OrganiserID int [not null, ref: > Users.UserID]
   Name varchar(150) [not null]
-  Description text [null]
+  Description varchar(max)
   EventDate datetime [not null]
   Location varchar(200) [not null]
-  Distance decimal(5,2) [not null]
-  EventType varchar(50) [not null, note: 'Marathon, Cycling or Trail Run']
-  EventBannerUrl varchar(500) [null]
-  CreatedAt datetime [default: `GETDATE()`]
+  Distance decimal(5,2) [not null, note: 'Must be greater than zero']
+  EventType varchar(20) [not null, note: 'Run, Walk, or Cycle']
+  EventBannerUrl varchar(500)
+  CreatedAt datetime [not null, default: `GETDATE()`]
 }
 
 Table Categories {
   CategoryID int [pk, increment]
   EventID int [not null, ref: > Events.EventID]
   CategoryName varchar(100) [not null]
-  MinAge int [null]
-  MaxAge int [null]
-  Distance decimal(5,2) [null]
+  MinAge int
+  MaxAge int
+  Distance decimal(5,2)
+
+  Indexes {
+    (CategoryID, EventID) [unique, name: 'UQ_Categories_CategoryID_EventID']
+  }
+}
+
+Table EventRoutes {
+  RouteID int [pk, increment]
+  EventID int [not null, ref: > Events.EventID]
+  RouteName varchar(100) [not null]
+  Distance decimal(5,2) [not null]
+  RouteDescription varchar(max)
+  RouteMapUrl varchar(500)
+
+  Indexes {
+    (EventID, RouteName) [unique, name: 'UQ_EventRoutes_EventID_RouteName']
+  }
 }
 
 Table Enrolments {
   EnrolmentID int [pk, increment]
   EventID int [not null, ref: > Events.EventID]
   ParticipantID int [not null, ref: > Users.UserID]
-  CategoryID int [not null, ref: > Categories.CategoryID]
-  EnrolmentDate datetime [default: `GETDATE()`]
-  Status varchar(20) [not null, note: 'Pending, Confirmed or Cancelled']
+  CategoryID int [not null]
+  EnrolmentDate datetime [not null, default: `GETDATE()`]
+  Status varchar(20) [not null, default: 'Pending']
+
+  Indexes {
+    (ParticipantID, EventID, CategoryID) [unique, name: 'UQ_Enrolments_Participant_Event_Category']
+  }
 }
 
 Table Results {
   ResultID int [pk, increment]
   EnrolmentID int [not null, unique, ref: - Enrolments.EnrolmentID]
-  FinishTime varchar(20) [not null]
+  FinishTime time [not null]
   Position int [not null]
-  CapturedAt datetime [default: `GETDATE()`]
+  CapturedAt datetime [not null, default: `GETDATE()`]
 }
+
+// A category is a valid enrolment choice only for its own event.
+Ref: Enrolments.(CategoryID, EventID) > Categories.(CategoryID, EventID)

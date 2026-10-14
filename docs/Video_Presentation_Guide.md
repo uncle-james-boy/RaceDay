@@ -1,29 +1,24 @@
-# Video Presentation Guide & Script Outline
+# Part 1 Video Presentation Guide
 
-**Total Target Time:** 3 to 5 Minutes
+Record a short, clear walkthrough using your own voice. The assignment prohibits AI-generated
+voices. Publish the recording as an unlisted YouTube video and add the real link to the README.
 
-## I. Introduction (0:00 - 0:45)
-* **Welcome & Role:** Introduce yourself as the Lead DBA and Principal Architect for the RaceDay platform.
-* **Project Goal:** Briefly state the purpose of Part 1: establishing a robust, scalable data foundation and API routing plan.
-* **Agenda Overview:** Mention the three key areas: Database Execution, ERD Design, and the API Plan.
+## Suggested order
 
-## II. SSMS Query Execution & Data Integrity (0:45 - 2:00)
-* **Screen Share:** Open SSMS and display the `RaceDay_Database.sql` script.
-* **Drop Logic:** Highlight the `DROP TABLE IF EXISTS` block, explaining the importance of dropping in *reverse dependency order*.
-* **Constraints Execution:** Point out the use of `CHECK` constraints (e.g., restricting Roles and Event Types).
-* **Seed Data:** Show the generated tables and briefly display the realistic seed data to prove relational integrity.
+1. Introduce RaceDay and the two roles: Organiser and Participant.
+2. Show the ERD and explain all six entities and their relationships. Explain that an Event can
+   have multiple EventRoutes for named courses and route details.
+3. Point out primary keys, foreign keys, cardinality, important constraints, and the composite
+   Enrolments `(CategoryID, EventID)` foreign key.
+4. Explain how the SQL setup creates and selects `RaceDayDB`, and that it stops rather than
+   dropping existing RaceDay tables. If demonstrating SQL, use a disposable test database and
+   verify it contains no data you need.
+5. Walk through the API plan, including session-based login, role checks, ownership checks, and
+   the route/category/enrolment/result endpoints.
+6. Demonstrate the real CI run only after GitHub Actions has completed successfully. Show the
+   actual green run; do not use a placeholder screenshot.
+7. When Part 2 is implemented, demonstrate the running API, Swagger, session behaviour, and
+   relevant passing tests.
 
-## III. ERD Design Choices & DBML (2:00 - 3:30)
-* **Visual Transition:** Show the exported `Part1_ERD.png` or the DBML syntax.
-* **Cardinality Deep Dive:** Explain the **1-to-Many** relationships and the **1-to-1** relationship between `Enrolments` and `Results` (enforced by the `UNIQUE` constraint on the foreign key).
-* **Normalization:** Briefly mention how separating `Categories` from `Events` allows dynamic distance/age grouping.
-
-## IV. API Routing Plan Review (3:30 - 4:45)
-* **Screen Share:** Open `docs/API_Endpoint_Plan.md`.
-* **Role-Based Access Control (RBAC):** Highlight how the "Allowed Role / Auth" column ensures Organisers cannot enrol in events, and Participants cannot post results.
-* **Failure Handling:** Emphasize granular failure cases (e.g., returning `409 Conflict` for duplicate enrolments).
-
-## V. Conclusion (4:45 - 5:00)
-* **Summary:** Reiterate that Part 1 provides a bulletproof data layer and clear API contract.
-* **Next Steps:** Mention Part 2 will focus on backend implementation.
-* **Sign-off:** Thank the stakeholders.
+Explain the choices in your own words. Do not claim that a feature or check works unless you
+have demonstrated or otherwise verified it.

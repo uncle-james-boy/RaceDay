@@ -2,36 +2,54 @@ name: RaceDay CI Build and Validate
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
-  validate-structure-and-lint:
+  part1-validation:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-    - name: Validate Repository Structure
-      run: |
-        echo "Verifying required files and directories..."
-        [ -f "README.md" ] || { echo "ERROR: Missing root README.md"; exit 1; }
-        [ -f "docs/API_Endpoint_Plan.md" ] || { echo "ERROR: Missing docs/API_Endpoint_Plan.md"; exit 1; }
-        [ -f "docs/RaceDay_Database.sql" ] || { echo "ERROR: Missing docs/RaceDay_Database.sql"; exit 1; }
-        [ -d ".github/workflows" ] || { echo "ERROR: Missing .github/workflows directory"; exit 1; }
-        echo "✅ Repository structure validated successfully!"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-    - name: Markdown Lint Check
-      uses: avto-dev/markdown-lint@v1
-      with:
-        config: '.markdownlint.json'
-        args: 'README.md docs/API_Endpoint_Plan.md'
+      - name: Install ERD renderer dependency
+        run: python -m pip install Pillow
 
-    - name: SQL Syntax Validation (Mock Check)
-      run: |
-        echo "Validating T-SQL syntax presence..."
-        grep -q "CREATE TABLE" docs/RaceDay_Database.sql && echo "✅ SQL CREATE TABLE statements found."
-        grep -q "INSERT INTO" docs/RaceDay_Database.sql && echo "✅ SQL INSERT seed data statements found."
-        echo "✅ SQL validation passed!"
+      - name: Validate Part 1 documents and schema
+        run: python tools/validate_part1.py
+
+      - name: Set up Node.js for the DBML CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate DBML and compile SQL Server schema
+        run: npx --yes -p @dbml/cli dbml2sql schema.dbml --mssql -o /tmp/raceday-dbml-check.sql
+
+      - name: Lint Markdown
+        uses: avto-dev/markdown-lint@v1
+        with:
+          config: '.markdownlint.json'
+          args: 'README.md docs/API_Endpoint_Plan.md docs/Part2_Implementation_Blueprint.md docs/Part2_Rubric_Checklist.md docs/Video_Presentation_Guide.md'
+
+      - name: Set up .NET when the API project exists
+        if: ${{ hashFiles('src/RaceDay.Api/*.csproj') != '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build API when the project exists
+        if: ${{ hashFiles('src/RaceDay.Api/*.csproj') != '' }}
+        run: |
+          dotnet restore src/RaceDay.Api/RaceDay.Api.csproj
+          dotnet build src/RaceDay.Api/RaceDay.Api.csproj --no-restore --configuration Release
+
+      - name: Run tests when a solution exists
+        if: ${{ hashFiles('RaceDay.sln') != '' && hashFiles('tests/**/*.csproj') != '' }}
+        run: dotnet test RaceDay.sln --configuration Release

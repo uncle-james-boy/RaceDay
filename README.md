@@ -1,46 +1,58 @@
 # RaceDay Event Management Platform
 
-## 📖 Project Overview
+![CI](https://github.com/uncle-james-boy/RaceDay/actions/workflows/build.yml/badge.svg)
 
-The **RaceDay** platform is a comprehensive event management solution designed to bridge the gap between race Organisers and Participants. It allows Organisers to create and manage sporting events (Marathons, Cycling, Trail Runs) while enabling Participants to enrol, track categories, and view official race results.
+## Project overview
 
-## 📂 Repository Directory Structure
+RaceDay helps Organisers manage road events and Participants browse events, enrol in a category,
+view route details, and track results. This repository holds Part 1's plan and schema. Part 2
+will build the ASP.NET Core Web API on this design.
 
-```text
-RaceDay/
-├── .github/
-│   └── workflows/
-│       └── build.yml
-├── docs/
-│   ├── Part1_ERD.png
-│   ├── API_Endpoint_Plan.md
-│   ├── RaceDay_Database.sql
-│   └── Video_Presentation_Guide.md
-├── schema.dbml
-└── README.md
-```
+Organisers manage their own events, categories, and routes; view enrolments; and record results.
+Participants browse events, enrol, and view only their own enrolments, results, and profile.
+Authentication uses server-side sessions, as required by the assignment.
 
-## 🗄️ SSMS Database Execution Guide
+## Part 1 files
 
-1. Open **SQL Server Management Studio (SSMS)** and connect to your instance.
-2. Open the file located at `docs/RaceDay_Database.sql`.
-3. Ensure you are connected to a target database (e.g., `RaceDayDB`).
-4. Execute the entire script (F5). The script drops tables in reverse dependency order, creates all tables with strict constraints, and inserts realistic seed data automatically.
+- `schema.dbml` is the schema source.
+- `docs/Part1_ERD.png` shows the six entities, keys, constraints, and cardinalities.
+- `docs/RaceDay_Database.sql` creates the schema and sample records on a fresh SQL Server.
+- `docs/API_Endpoint_Plan.md` specifies the API methods, routes, roles, bodies, and responses.
+- `docs/Part2_Implementation_Blueprint.md` maps the model to EF Core.
+- `docs/Part2_Rubric_Checklist.md` maps Part 2 rubric criteria to implementation, tests, and evidence.
+- `docs/Video_Presentation_Guide.md` outlines the Part 1 walkthrough.
 
-## 📊 Entity Relationship Diagram (ERD)
+The six entities are Users, Events, Categories, EventRoutes, Enrolments, and Results. EventRoutes
+stores named course details for an event: distance, optional description, and optional map URL. An
+event can have multiple routes. Enrolments use a composite foreign key so that their CategoryID
+must belong to the same EventID.
 
-Below is the visual representation of our relational schema modeled in DBML.
+## SQL Server setup
 
-![RaceDay ERD Diagram](docs/Part1_ERD.png)
+In SSMS, connect to SQL Server and open `docs/RaceDay_Database.sql`. It creates `RaceDayDB` if
+needed and selects it. The script does not drop or replace tables. If it detects existing RaceDay
+tables, it stops; use a reviewed migration for an existing database. The sample password hashes
+are placeholders and cannot be used to sign in. Do not run the setup script against a database
+whose data must be preserved.
 
-*Note: Export this image by copying the `schema.dbml` file into [dbdiagram.io](https://dbdiagram.io).*
+## Validation and CI
 
-## 🔌 API Documentation
+GitHub Actions validates the repository files, DBML, schema consistency, safe SQL setup, seed
+data, endpoint plan, and generated ERD. When Part 2 is added, the workflow will also build the API
+and run tests. The README must contain a screenshot captured from a real successful workflow run;
+no screenshot is claimed yet.
 
-Review the full API routing plan, including HTTP methods, role-based access control (RBAC), request schemas, and failure handling in the [API Endpoint Plan](docs/API_Endpoint_Plan.md).
+## Remaining manual submission tasks
 
-## 🎥 Video Presentation
+- [ ] Capture and add a screenshot of a real green GitHub Actions run.
+- [ ] Record the required presentation in your own voice, publish it as an unlisted YouTube
+  video, and replace the link below with the real URL.
+- [ ] Review, understand, and adapt the work before submission.
 
-Watch the architectural walkthrough and technical demonstration of Part 1:
+Video link: **to be added after recording**.
 
-👉 **[YouTube Video Presentation Placeholder]** *(Link to be updated post-recording)*
+## AI assistance disclosure
+
+AI assistance was used to review the assignment and help draft documentation and code. The
+student should review, understand, and adapt the work before submission in line with the
+assignment's academic integrity instructions.

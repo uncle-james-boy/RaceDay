@@ -83,7 +83,7 @@ public sealed class EventsController(RaceDayDbContext dbContext) : ControllerBas
 
         if (raceEvent.OrganiserID != HttpContext.Session.GetInt32(SessionKeys.UserId))
         {
-            return Forbid();
+            return StatusCode(StatusCodes.Status403Forbidden);
         }
 
         raceEvent.Name = request.Name.Trim();
@@ -116,7 +116,7 @@ public sealed class EventsController(RaceDayDbContext dbContext) : ControllerBas
 
         if (raceEvent.OrganiserID != HttpContext.Session.GetInt32(SessionKeys.UserId))
         {
-            return Forbid();
+            return StatusCode(StatusCodes.Status403Forbidden);
         }
 
         var hasDependents = await dbContext.Categories.AnyAsync(item => item.EventID == eventId, cancellationToken)

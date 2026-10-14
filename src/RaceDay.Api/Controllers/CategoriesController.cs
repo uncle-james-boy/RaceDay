@@ -141,7 +141,7 @@ public sealed class CategoriesController(RaceDayDbContext dbContext) : Controlle
 
         return raceEvent.OrganiserID == HttpContext.Session.GetInt32(SessionKeys.UserId)
             ? null
-            : Forbid();
+            : StatusCode(StatusCodes.Status403Forbidden);
     }
 
     private static void Apply(Category category, CategoryWriteRequest request)

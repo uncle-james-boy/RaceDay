@@ -161,7 +161,7 @@ public sealed class AuthenticationTests
 
         new SessionAuthorizeAttribute(UserRoles.Organiser).OnAuthorization(context);
 
-        Assert.IsType<ForbidResult>(context.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(context.Result).StatusCode);
     }
 
     private static RaceDayDbContext CreateDbContext()

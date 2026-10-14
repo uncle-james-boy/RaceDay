@@ -43,7 +43,7 @@ public sealed class EventResourceTests
 
         var result = await controller.Delete(category.CategoryID, CancellationToken.None);
 
-        Assert.IsType<ForbidResult>(result);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result).StatusCode);
         Assert.Single(await db.Categories.ToListAsync());
     }
 
@@ -116,8 +116,8 @@ public sealed class EventResourceTests
         }, CancellationToken.None);
         var delete = await controller.Delete(route.RouteID, CancellationToken.None);
 
-        Assert.IsType<ForbidResult>(update.Result);
-        Assert.IsType<ForbidResult>(delete);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(update.Result).StatusCode);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(delete).StatusCode);
         Assert.Equal("10 km", (await db.EventRoutes.SingleAsync()).RouteName);
     }
 

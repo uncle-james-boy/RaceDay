@@ -107,7 +107,7 @@ public sealed class EnrolmentTests
         var allowed = await CreateOrganiserController(db, userId: 3)
             .GetForEvent(data.Event.EventID, CancellationToken.None);
 
-        Assert.IsType<ForbidResult>(forbidden.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(forbidden.Result).StatusCode);
         var rows = Assert.IsType<List<EnrolmentResponse>>(Assert.IsType<OkObjectResult>(allowed.Result).Value);
         Assert.Single(rows);
         Assert.Equal("Alex Runner", rows[0].ParticipantName);

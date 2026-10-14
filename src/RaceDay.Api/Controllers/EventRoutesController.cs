@@ -148,7 +148,7 @@ public sealed class EventRoutesController(RaceDayDbContext dbContext) : Controll
 
         return raceEvent.OrganiserID == HttpContext.Session.GetInt32(SessionKeys.UserId)
             ? null
-            : Forbid();
+            : StatusCode(StatusCodes.Status403Forbidden);
     }
 
     private static void Apply(EventRoute route, EventRouteWriteRequest request)

@@ -39,7 +39,7 @@ public sealed class EventTests
 
         var result = await controller.UpdateEvent(raceEvent.EventID, ValidRequest(), CancellationToken.None);
 
-        Assert.IsType<ForbidResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result.Result).StatusCode);
         Assert.Equal("Spring Race", (await db.Events.SingleAsync()).Name);
     }
 

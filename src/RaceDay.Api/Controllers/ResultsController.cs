@@ -42,7 +42,7 @@ public sealed class ResultsController(RaceDayDbContext dbContext) : ControllerBa
 
         if (enrolment.OrganiserID != HttpContext.Session.GetInt32(SessionKeys.UserId))
         {
-            return Forbid();
+            return StatusCode(StatusCodes.Status403Forbidden);
         }
 
         if (enrolment.EventDate >= DateTime.Now)

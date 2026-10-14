@@ -67,7 +67,7 @@ public sealed class ResultTests
             Position = 4
         }, CancellationToken.None);
 
-        Assert.IsType<ForbidResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result.Result).StatusCode);
         Assert.Empty(await db.Results.ToListAsync());
     }
 

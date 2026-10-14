@@ -106,7 +106,7 @@ public sealed class EnrolmentsController(RaceDayDbContext dbContext) : Controlle
 
         if (raceEvent.OrganiserID != HttpContext.Session.GetInt32(SessionKeys.UserId))
         {
-            return Forbid();
+            return StatusCode(StatusCodes.Status403Forbidden);
         }
 
         var enrolments = await dbContext.Enrolments.AsNoTracking()

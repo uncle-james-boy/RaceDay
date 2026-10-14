@@ -43,6 +43,11 @@ public sealed class ApiSessionFlowTests
         Assert.Equal(HttpStatusCode.OK, publicEvents.StatusCode);
         var anonymousProfile = await anonymous.GetAsync("/api/users/profile");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousProfile.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.PostAsJsonAsync("/api/events", ValidEventBody())).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/enrolments")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/results")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsync("/api/auth/logout", null)).StatusCode);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await anonymous.PostAsJsonAsync("/api/auth/register", new
         {
@@ -60,7 +65,11 @@ public sealed class ApiSessionFlowTests
 
         var participantCookies = new CookieContainer();
         using var participant = CreateSessionClient(address, participantCookies);
-        Assert.Equal(HttpStatusCode.OK, (await Login(participant, "participant@example.com")).StatusCode);
+        var participantLogin = await Login(participant, "participant@example.com");
+        Assert.Equal(HttpStatusCode.OK, participantLogin.StatusCode);
+        var participantSetCookie = string.Join(";", participantLogin.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("HttpOnly", participantSetCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SameSite=Lax", participantSetCookie, StringComparison.OrdinalIgnoreCase);
         Assert.NotNull(participantCookies.GetCookies(new Uri(address))[".RaceDay.Session"]);
         var participantProfile = await participant.GetAsync("/api/users/profile");
         Assert.Equal(HttpStatusCode.OK, participantProfile.StatusCode);

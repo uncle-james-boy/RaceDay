@@ -44,7 +44,17 @@ public sealed class ApiSessionFlowTests
         var anonymousProfile = await anonymous.GetAsync("/api/users/profile");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousProfile.StatusCode);
 
+        Assert.Equal(HttpStatusCode.BadRequest, (await anonymous.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Alex Runner",
+            email = "not-an-email",
+            password = "secure test password",
+            role = "Participant"
+        })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Register(anonymous, "invalid-role@example.com", "Administrator")).StatusCode);
+
         Assert.Equal(HttpStatusCode.Created, (await Register(anonymous, "participant@example.com", "Participant")).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await Register(anonymous, "PARTICIPANT@example.com", "Participant")).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await Register(anonymous, "organiser@example.com", "Organiser")).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await Register(anonymous, "other@example.com", "Organiser")).StatusCode);
 
@@ -68,6 +78,14 @@ public sealed class ApiSessionFlowTests
         using var organiser = CreateSessionClient(address, organiserCookies);
         Assert.Equal(HttpStatusCode.OK, (await Login(organiser, "organiser@example.com")).StatusCode);
         Assert.NotNull(organiserCookies.GetCookies(new Uri(address))[".RaceDay.Session"]);
+        Assert.Equal(HttpStatusCode.BadRequest, (await organiser.PostAsJsonAsync("/api/events", new
+        {
+            name = "Invalid Race",
+            eventDate = DateTime.Now.AddDays(5),
+            location = "Cape Town",
+            distance = 0m,
+            eventType = "Swim"
+        })).StatusCode);
         var createEvent = await organiser.PostAsJsonAsync("/api/events", ValidEventBody(eventDate: DateTime.Now.AddDays(-5)));
         Assert.Equal(HttpStatusCode.Created, createEvent.StatusCode);
         using var eventJson = JsonDocument.Parse(await createEvent.Content.ReadAsStringAsync());
@@ -135,6 +153,12 @@ public sealed class ApiSessionFlowTests
         Assert.Equal(HttpStatusCode.OK, (await organiser.PutAsJsonAsync($"/api/events/{eventId}",
             ValidEventBody(name: "Spring Race Updated", eventDate: DateTime.Now.AddDays(-5)))).StatusCode);
 
+        Assert.Equal(HttpStatusCode.BadRequest, (await participant.PutAsJsonAsync("/api/users/profile", new
+        {
+            fullName = "Alex Updated",
+            profilePictureUrl = "not-a-url"
+        })).StatusCode);
+
         var mismatch = await participant.PostAsJsonAsync("/api/enrolments", new
         {
             eventID = eventId,
@@ -148,6 +172,11 @@ public sealed class ApiSessionFlowTests
             categoryID = categoryId
         });
         Assert.Equal(HttpStatusCode.Created, participantEnrolment.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await participant.PostAsJsonAsync("/api/enrolments", new
+        {
+            eventID = 0,
+            categoryID = categoryId
+        })).StatusCode);
         using var enrolmentJson = JsonDocument.Parse(await participantEnrolment.Content.ReadAsStringAsync());
         var enrolmentId = enrolmentJson.RootElement.GetProperty("enrolmentID").GetInt32();
         Assert.Equal(HttpStatusCode.OK, (await participant.GetAsync("/api/enrolments")).StatusCode);
@@ -167,6 +196,12 @@ public sealed class ApiSessionFlowTests
             position = 4
         });
         Assert.Equal(HttpStatusCode.Created, capturedResult.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await organiser.PostAsJsonAsync("/api/results", new
+        {
+            enrolmentID = enrolmentId,
+            finishTime = TimeSpan.Zero,
+            position = 4
+        })).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await organiser.PostAsJsonAsync("/api/results", new
         {
             enrolmentID = enrolmentId,

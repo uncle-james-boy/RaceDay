@@ -5,12 +5,13 @@
 ## Project overview
 
 RaceDay helps Organisers manage road events and Participants browse events, enrol in a category,
-view route details, and track results. This repository holds Part 1's plan and schema. Part 2
-will build the ASP.NET Core Web API on this design.
+view route details, and track results. This repository contains Part 1's plan and schema plus the
+beginning of the Part 2 ASP.NET Core Web API.
 
-Organisers manage their own events, categories, and routes; view enrolments; and record results.
-Participants browse events, enrol, and view only their own enrolments, results, and profile.
-Authentication uses server-side sessions, as required by the assignment.
+The API foundation currently includes the six EF Core entities, SQL Server configuration,
+registration, login, logout, password hashing, and server-side session storage. Eight authentication
+unit tests currently pass. Event, category, route, profile, enrolment, and result endpoints and
+their role and ownership checks are still being implemented.
 
 ## Part 1 files
 
@@ -35,21 +36,47 @@ tables, it stops; use a reviewed migration for an existing database. The sample 
 are placeholders and cannot be used to sign in. Do not run the setup script against a database
 whose data must be preserved.
 
+## Build and run
+
+The development connection string uses `(localdb)\\MSSQLLocalDB`. Before using database-backed
+endpoints, create the schema on a fresh SQL Server instance with the safe setup instructions above,
+or edit `src/RaceDay.Api/appsettings.Development.json` for your SQL Server. The API can start before
+the database is available, but database-backed requests will fail until the connection works.
+
+From the repository root, run:
+
+```powershell
+dotnet restore RaceDay.sln -m:1
+dotnet build RaceDay.sln --no-restore --configuration Release -m:1
+dotnet test RaceDay.sln --no-build --no-restore --configuration Release -m:1
+dotnet run --project src/RaceDay.Api/RaceDay.Api.csproj
+```
+
+When the API is running in Development, open the Swagger URL printed by `dotnet run`. The current
+unit tests use an in-memory database and do not require executing the SQL script.
+
 ## Validation and CI
 
-GitHub Actions validates the repository files, DBML, schema consistency, safe SQL setup, seed
-data, endpoint plan, and generated ERD. When Part 2 is added, the workflow will also build the API
-and run tests. The README must contain a screenshot captured from a real successful workflow run;
-no screenshot is claimed yet.
+GitHub Actions is configured to validate the Part 1 files and DBML, then restore, build, and test
+the solution. The same local restore/build/test sequence passed, including eight tests. No GitHub
+Actions run or screenshot has been verified yet; the commits are not pushed.
 
 ## Remaining manual submission tasks
 
-- [ ] Capture and add a screenshot of a real green GitHub Actions run.
-- [ ] Record the required presentation in your own voice, publish it as an unlisted YouTube
-  video, and replace the link below with the real URL.
+- [ ] In SSMS, run the safe script only on a fresh disposable database, verify `DB_NAME()` and the
+  six tables, then save a clear screenshot as `docs/evidence/part1-sql-run.png`.
+- [ ] On GitHub, open the successful Part 1 Actions run for the pushed commit and save the actual
+  green run page as `docs/evidence/part1-ci-success.png`.
+- [ ] After Part 2 CI passes, save a screenshot showing its successful build and test jobs as
+  `docs/evidence/part2-ci-success.png`.
+- [ ] Record the presentation in your own voice, demonstrate the completed API and tests, save a
+  review copy as `docs/evidence/part2-presentation.mp4`, upload it as Unlisted on YouTube, verify
+  playback/audio, and replace the video link below with its real URL.
 - [ ] Review, understand, and adapt the work before submission.
+- [ ] Submit the repository URL on ARC and confirm it points to the latest pushed commit.
 
-Video link: **to be added after recording**.
+Video link: **to be added after recording**. See
+[`docs/Part2_Rubric_Checklist.md`](docs/Part2_Rubric_Checklist.md) for exact evidence checks.
 
 ## AI assistance disclosure
 

@@ -56,6 +56,23 @@ public sealed class EfCoreModelTests
         Assert.Equal("UQ_Enrolments_Participant_Event_Category", uniqueIndex.GetDatabaseName());
     }
 
+    [Fact]
+    public void CodeFirstCreateScriptContainsTheSixTablesAndCompositeForeignKey()
+    {
+        using var db = CreateSqlServerModelContext();
+        var createScript = db.Database.GenerateCreateScript();
+
+        foreach (var table in new[] { "Users", "Events", "Categories", "EventRoutes", "Enrolments", "Results" })
+        {
+            Assert.Contains($"CREATE TABLE [dbo].[{table}]", createScript);
+        }
+
+        Assert.Contains("FK_Enrolments_CategoryEvent", createScript);
+        Assert.Contains("FOREIGN KEY ([CategoryID], [EventID])", createScript);
+        Assert.Contains("REFERENCES [dbo].[Categories] ([CategoryID], [EventID])", createScript);
+        Assert.Single(db.Database.GetMigrations());
+    }
+
     private static RaceDayDbContext CreateSqlServerModelContext()
     {
         var options = new DbContextOptionsBuilder<RaceDayDbContext>()

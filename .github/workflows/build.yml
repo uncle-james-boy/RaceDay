@@ -2,9 +2,9 @@ name: RaceDay CI Build and Validate
 
 on:
   push:
-    branches: [main]
+    branches: [main, part2]
   pull_request:
-    branches: [main]
+    branches: [main, part2]
 
 jobs:
   part1-validation:
@@ -38,18 +38,16 @@ jobs:
           config: '.markdownlint.json'
           args: 'README.md docs/API_Endpoint_Plan.md docs/Part2_Implementation_Blueprint.md docs/Part2_Rubric_Checklist.md docs/Video_Presentation_Guide.md'
 
-      - name: Set up .NET when the API project exists
-        if: ${{ hashFiles('src/RaceDay.Api/*.csproj') != '' }}
+      - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore and build API and tests when the project exists
-        if: ${{ hashFiles('src/RaceDay.Api/*.csproj') != '' }}
-        run: |
-          dotnet restore RaceDay.sln -m:1
-          dotnet build RaceDay.sln --no-restore --configuration Release -m:1
+      - name: Restore solution packages
+        run: dotnet restore RaceDay.sln
 
-      - name: Run tests when a solution exists
-        if: ${{ hashFiles('RaceDay.sln') != '' && hashFiles('tests/**/*.csproj') != '' }}
-        run: dotnet test RaceDay.sln --no-build --no-restore --configuration Release -m:1
+      - name: Build API and tests
+        run: dotnet build RaceDay.sln --no-restore --configuration Release
+
+      - name: Run automated tests
+        run: dotnet test RaceDay.sln --no-build --no-restore --configuration Release

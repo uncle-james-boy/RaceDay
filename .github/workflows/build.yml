@@ -36,7 +36,7 @@ jobs:
         uses: avto-dev/markdown-lint@v1
         with:
           config: '.markdownlint.json'
-          args: 'README.md docs/API_Endpoint_Plan.md docs/Part2_Implementation_Blueprint.md docs/Part2_Rubric_Checklist.md docs/Video_Presentation_Guide.md'
+          args: 'README.md docs/API_Endpoint_Plan.md docs/Part2_Implementation_Blueprint.md docs/Part2_Rubric_Checklist.md docs/Video_Presentation_Guide.md docs/Part2_Video_Presentation_Guide.md'
 
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4

@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0CADFC29-A0D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaceDay.Api", "src\RaceDay.Api\RaceDay.Api.csproj", "{F4CE7DE5-344E-4CCB-9E51-B7943DB61998}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E2715413-428F-443E-95E7-983A893D7635}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaceDay.Api.Tests", "tests\RaceDay.Api.Tests\RaceDay.Api.Tests.csproj", "{1AE89FB5-F44D-4373-84FC-7191EB5CE7F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{F4CE7DE5-344E-4CCB-9E51-B7943DB61998}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4CE7DE5-344E-4CCB-9E51-B7943DB61998}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4CE7DE5-344E-4CCB-9E51-B7943DB61998}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AE89FB5-F44D-4373-84FC-7191EB5CE7F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AE89FB5-F44D-4373-84FC-7191EB5CE7F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AE89FB5-F44D-4373-84FC-7191EB5CE7F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AE89FB5-F44D-4373-84FC-7191EB5CE7F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F4CE7DE5-344E-4CCB-9E51-B7943DB61998} = {0CADFC29-A0D4-4004-ACAC-F76E7E3EC7F9}
+		{1AE89FB5-F44D-4373-84FC-7191EB5CE7F1} = {E2715413-428F-443E-95E7-983A893D7635}
 	EndGlobalSection
 EndGlobal

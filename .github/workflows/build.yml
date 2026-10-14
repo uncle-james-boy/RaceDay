@@ -44,12 +44,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build API when the project exists
+      - name: Restore and build API and tests when the project exists
         if: ${{ hashFiles('src/RaceDay.Api/*.csproj') != '' }}
         run: |
-          dotnet restore src/RaceDay.Api/RaceDay.Api.csproj
-          dotnet build src/RaceDay.Api/RaceDay.Api.csproj --no-restore --configuration Release
+          dotnet restore RaceDay.sln
+          dotnet build RaceDay.sln --no-restore --configuration Release -m:1
 
       - name: Run tests when a solution exists
         if: ${{ hashFiles('RaceDay.sln') != '' && hashFiles('tests/**/*.csproj') != '' }}
-        run: dotnet test RaceDay.sln --configuration Release
+        run: dotnet test RaceDay.sln --no-build --no-restore --configuration Release -m:1

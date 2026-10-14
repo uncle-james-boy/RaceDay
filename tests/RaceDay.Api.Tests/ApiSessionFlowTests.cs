@@ -34,6 +34,17 @@ public sealed class ApiSessionFlowTests
         using var swagger = JsonDocument.Parse(await swaggerResponse.Content.ReadAsStringAsync());
         var paths = swagger.RootElement.GetProperty("paths");
         Assert.Equal(23, CountOperations(paths));
+        foreach (var path in paths.EnumerateObject())
+        {
+            foreach (var operation in path.Value.EnumerateObject())
+            {
+                Assert.True(operation.Value.TryGetProperty("summary", out var summary)
+                    && !string.IsNullOrWhiteSpace(summary.GetString()),
+                    $"{operation.Name.ToUpperInvariant()} {path.Name} needs a Swagger description.");
+                Assert.True(operation.Value.TryGetProperty("responses", out _),
+                    $"{operation.Name.ToUpperInvariant()} {path.Name} needs response descriptions.");
+            }
+        }
         Assert.Contains("Creates an event owned by the signed-in Organiser.",
             paths.GetProperty("/api/events").GetProperty("post").GetProperty("summary").GetString());
         Assert.Equal(1, paths.GetProperty("/api/events").GetProperty("post").GetProperty("security").GetArrayLength());

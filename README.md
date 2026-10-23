@@ -89,4 +89,4 @@ Review the [rubric checklist](docs/Part2_Rubric_Checklist.md), verify the final 
 
 ## AI assistance disclosure
 
-AI assistance was used to review the assignment and help draft documentation and code. The student must review and understand the submitted work and follow the assignment's academic integrity instructions.
+AI assistance was used to review the assignment and help draft documentation. I reviewed and understood the submitted work and followed the assignment's academic integrity instructions.

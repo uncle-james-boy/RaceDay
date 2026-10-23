@@ -2,7 +2,7 @@
 
 The assignment requires a Part 2 video showing the running API and explaining the code structure,
 endpoints, authentication, and unit tests. Record in your own voice; AI-generated voices are not
-permitted. Upload the finished video to YouTube as **Unlisted**.
+permitted. The student supplied this link for the Part 2 video: [API/application demonstration](https://youtu.be/jX8b3rDCzcM?si=upj6Y6qbrTz7oh3E). Verify its access and playback before submission.
 
 ## Prepare
 
@@ -28,9 +28,9 @@ permitted. Upload the finished video to YouTube as **Unlisted**.
    composite `(CategoryID, EventID)` foreign key in `RaceDayDbContext`.
 2. Expand all 23 Swagger operations. Explain their purpose, inputs, responses, and required roles.
    Point out the session-cookie security description.
-3. Register an Organiser and a Participant. Log in and show the session cookie; show that the
-   profile response does not include a password hash. Log out and show that a protected request
-   returns 401.
+3. Register an Organiser and a Participant. Log in and show that the session cookie is set without
+   exposing its value. Show that the profile response does not include a password hash. Log out
+   and show that a protected request returns 401.
 4. As an Organiser, create an event, category, and EventRoute. List and update them. Show that the
    owner can view the event's enrolments and that dependent records prevent unsafe event/category
    deletion.
@@ -48,14 +48,14 @@ permitted. Upload the finished video to YouTube as **Unlisted**.
 ## Save and verify
 
 - Save a local review copy as `docs/evidence/part2-presentation.mp4`.
-- Upload to YouTube as **Unlisted** and replace the Part 2 placeholder in `README.md` with the real
-  link.
-- Replay the local file and open the YouTube link in a private browser window. Check that the voice
+- If you keep a local review copy, replay it and open the YouTube link in a private browser window. Check that the voice
   is clear, the code and Swagger responses are readable, and the video opens without signing in.
 
 ## GitHub Actions screenshot
 
-After the final branch is pushed, open the successful `RaceDay CI Build and Validate` run in the
-repository's **Actions** tab. Save a genuine capture showing the workflow, branch, commit, and
-successful build/test jobs as `docs/evidence/part2-ci-success.png`. Confirm the screenshot is for
-the latest commit being submitted. Do not create or substitute a mock image.
+The supplied screenshot `docs/evidence/docsevidencepart2-ci-success.png..png` shows the successful
+validation job steps from run #8 on commit `53b2901`. After the final documentation changes are
+pushed, open the successful `RaceDay CI Build and Validate` run in the repository's **Actions** tab.
+Save a genuine capture showing the workflow, branch, commit, and successful build/test jobs, then
+confirm the screenshot is for the latest commit being submitted. Do not create or substitute a mock
+image.

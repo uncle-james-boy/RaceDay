@@ -1,69 +1,47 @@
 # RaceDay Event Management Platform
 
-![CI](https://github.com/uncle-james-boy/RaceDay/actions/workflows/build.yml/badge.svg?branch=part2)
+RaceDay is a road-race event management API for Organisers and Participants. The repository contains the six-entity Part 1 database design and the Part 2 ASP.NET Core Web API implementation.
 
-RaceDay helps Organisers manage road events and Participants browse events, enrol in a category,
-view route details, and track results. The repository contains the six-entity Part 1 design and a
-Part 2 ASP.NET Core Web API.
+## Technology and requirements
 
-## Roles and API
+- .NET 8, ASP.NET Core Web API, Entity Framework Core 8, and SQL Server
+- SQL Server LocalDB by default (or another SQL Server instance configured locally)
+- PowerShell and the .NET 8 SDK
 
-- **Organiser:** manages only their own events, categories, and routes; views enrolments and records
-  results for their events.
-- **Participant:** browses public events, creates an account, enrols in a category, and views only
-  their own enrolments and results.
+The API uses password hashing and server-side session authentication. A browser receives an HttpOnly session cookie; the server keeps the user ID and role in session state. This project does not use JWT. Organiser actions are role-checked and operations on owned events, categories, or routes check that the signed-in Organiser owns the event. Participants can access their own enrolments and results.
 
-The API uses EF Core with SQL Server and Code-First migrations. Authentication uses a server-side
-session cookie that stores the user's ID and role; passwords are hashed. The API plan contains 23
-operations across authentication, profiles, events, categories, routes, enrolments, and results.
-The enrolment model preserves the composite `(CategoryID, EventID)` foreign key, so a participant
-cannot select a category from a different event.
+## Data model
 
-The six entities are Users, Events, Categories, EventRoutes, Enrolments, and Results. EventRoutes
-stores named course details for an event: distance, optional description, and optional map URL.
-The full plan and schema files are listed below.
+| Entity | Purpose and key relationship |
+| --- | --- |
+| Users | Organiser and Participant accounts; Organisers own events and Participants make enrolments. |
+| Events | Race events, each owned by a User. |
+| Categories | An event's enrolment categories; each category belongs to one Event. |
+| EventRoutes | Named course details belonging to an Event. |
+| Enrolments | A Participant's entry in an Event and Category; stores both `EventID` and `CategoryID`. |
+| Results | A race result associated with an Enrolment. |
 
-## Project files
+Categories have an alternate composite key `(CategoryID, EventID)`. Enrolments reference that pair with the matching composite foreign key. This ensures the chosen category belongs to the same event as the enrolment.
 
-- `schema.dbml` — schema source.
-- `docs/Part1_ERD.png` — the six entities, keys, constraints, and cardinalities.
-- `docs/RaceDay_Database.sql` — SQL Server database and sample data setup.
-- `docs/API_Endpoint_Plan.md` — methods, routes, roles, request bodies, and responses.
-- `docs/Part2_Implementation_Blueprint.md` — mapping from Part 1 to EF Core.
-- `src/RaceDay.Api/Data/Migrations` — the initial EF Core Code-First migration.
-- `tests/RaceDay.Api.Tests` — automated controller, model, and real HTTP session-flow tests.
-- `docs/Part2_Rubric_Checklist.md` — criterion-by-criterion status and manual evidence checklist.
-- `docs/Video_Presentation_Guide.md` — recording checklists for Parts 1 and 2.
-- `docs/Part2_Video_Presentation_Guide.md` — detailed Part 2 demonstration sequence.
+The API plan documents 23 operations across authentication, profiles, events, categories, routes, enrolments, and results. Swagger exposes those operations and documents the session-cookie authentication scheme.
 
 ## Database setup
 
-The default development connection uses `(localdb)\\MSSQLLocalDB` and the database name
-`RaceDayDB`. Choose one setup method for a new, empty database:
+The default connection is `(localdb)\\MSSQLLocalDB`, database `RaceDayDB`. The API does not create or migrate the database on startup. Choose **one** setup method for a new, empty database:
 
-1. **Part 1 SQL script:** In SSMS, open `docs/RaceDay_Database.sql` and execute it against a fresh
-   disposable SQL Server instance. It creates and selects `RaceDayDB`, creates all six tables, and
-   adds sample records. It stops if RaceDay tables already exist; it does not drop or replace them.
-2. **EF Core migration:** Install the EF command-line tool once, then update a fresh database:
+1. **SQL script:** Open [`docs/RaceDay_Database.sql`](docs/RaceDay_Database.sql) in SSMS and run it only against a fresh disposable SQL Server instance/database. The script creates/selects `RaceDayDB`, creates the six tables, and inserts sample rows. It stops if RaceDay tables already exist; it does not drop or replace them. The sample password hashes are placeholders and cannot be used to log in.
+2. **EF Core migration:** Install the EF tool once, then run the migration against a fresh database using the configured connection string:
 
    ```powershell
    dotnet tool install --global dotnet-ef --version 8.0.31
    dotnet ef database update --project src/RaceDay.Api/RaceDay.Api.csproj --startup-project src/RaceDay.Api/RaceDay.Api.csproj
    ```
 
-   The migration creates the schema but does not add the Part 1 sample records. Do not apply the
-   migration to a database already created by the SQL script: that database has no EF migration
-   history, so EF would try to create tables that already exist. Never run setup against a database
-   whose data must be kept. The sample password hashes in the SQL script are placeholders and
-   cannot be used to sign in.
-
-If your SQL Server is different from LocalDB, edit the connection string in
-`src/RaceDay.Api/appsettings.Development.json`. The API does not create or migrate a database on
-startup.
+   The migration creates the schema but does not insert sample records. Do not apply the migration to a database already created by the SQL script: the SQL script does not create EF migration history, so EF may try to create tables that already exist. Never run either setup method against data you need to preserve. To use a different SQL Server, set `ConnectionStrings__RaceDayDatabase` for the current shell or edit the local development settings; do not commit real credentials.
 
 ## Build, test, and run
 
-From the repository root in PowerShell:
+Run these commands from the repository root:
 
 ```powershell
 dotnet restore RaceDay.sln
@@ -72,48 +50,43 @@ dotnet test RaceDay.sln --no-build --no-restore --configuration Release
 dotnet run --project src/RaceDay.Api/RaceDay.Api.csproj --launch-profile https
 ```
 
-The HTTPS launch profile opens Swagger at `https://localhost:7107/swagger` (or follow the URL
-printed by `dotnet run`). Swagger lists and describes the endpoints. To exercise database-backed
-requests, first configure one of the database setup options above. The automated tests use an
-in-memory database and a local HTTP server; the SQL Server model is inspected without connecting to
-a database. A live SQL Server run has not been performed here.
+Open the HTTPS URL printed by `dotnet run` and add `/swagger` if needed. The launch profile normally serves Swagger at `https://localhost:7107/swagger`. Database-backed API requests require a configured, migrated SQL Server database and appropriate data. Automated tests use EF Core InMemory and an in-process HTTP server; they exercise API/session behaviour but do not prove a live SQL Server connection.
 
-## Verification and GitHub Actions
+## Project documents
 
-The workflow validates Part 1 files, converts the DBML, lints Markdown, restores and builds the
-solution, and runs all tests on pushes and pull requests for `main` and `part2`. The local Part 1
-validator and Markdown lint passed. The final Release build passed with 0 warnings and 0 errors,
-and all 41 tests passed. NuGet restore succeeded using a repository-local configuration because
-the sandbox could not read the roaming NuGet configuration. No GitHub Actions run or screenshot is
-claimed: the `part2` branch and its work are local and have not been pushed.
+- [Part 1 ERD](docs/Part1_ERD.png)
+- [Part 1 DBML](schema.dbml)
+- [Part 1 SQL Server script](docs/RaceDay_Database.sql)
+- [API endpoint plan](docs/API_Endpoint_Plan.md)
+- [Part 2 implementation blueprint](docs/Part2_Implementation_Blueprint.md)
+- [Part 2 demonstration runbook](docs/PART2_DEMO_RUNBOOK.md)
+- [Part 2 rubric checklist and evidence map](docs/Part2_Rubric_Checklist.md)
+- [Part 1 presentation guide](docs/Video_Presentation_Guide.md)
+- [Part 2 presentation guide](docs/Part2_Video_Presentation_Guide.md)
 
-## Submission evidence still to add
+## Verification and evidence
 
-- [ ] **Part 1 CI screenshot:** after pushing the final Part 1/Part 2 branch, capture the genuine
-  green GitHub Actions run for the submitted commit as `docs/evidence/part1-ci-success.png`.
-- [ ] **Part 2 CI screenshot:** capture the genuine run showing successful build and test jobs as
-  `docs/evidence/part2-ci-success.png`.
-- [ ] **Part 1 video:** in your own voice, explain the ERD and six entities, cardinalities, key
-  constraints, endpoint plan, and SQL design; run the script live in SSMS on a disposable database.
-  Upload as Unlisted and add the real link below.
-- [ ] **Part 2 video:** in your own voice, demonstrate the running API, all Swagger endpoint groups,
-  the session cookie, both roles, ownership rules, enrolment/result workflows, composite EF key, and
-  passing tests. Upload as Unlisted and add the real link below.
-- [ ] **Optional supporting SQL screenshot:** save the SSMS database/table verification screen as
-  `docs/evidence/part1-sql-run.png`. The brief requires the SQL script to run live in the Part 1
-  video; it does not separately require this screenshot.
-- [ ] Review and understand the code before submission, push the final `part2` branch to the
-  existing repository, then submit `https://github.com/uncle-james-boy/RaceDay` on ARC and verify
-  the submitted repository shows the latest commit.
+The repository records a local Release build and **41 passing tests** from 14 October 2026; those results use the in-memory test database described above. A genuine GitHub Actions run succeeded on commit `53b2901` (`part2`), running Part 1 validation, DBML conversion, Markdown lint, restore, Release build, and tests. The screenshots below are the manually supplied captures of that run. Because this README and checklist are now being updated after that run, capture a new successful Actions run for the final pushed commit before treating CI evidence as final.
 
-Part 1 video: **to be added after recording**
-Part 2 video: **to be added after recording**
+**GitHub Actions evidence for commit `53b2901`:** [Run #8](https://github.com/uncle-james-boy/RaceDay/actions/runs/39057052022)
 
-See [`docs/Part2_Rubric_Checklist.md`](docs/Part2_Rubric_Checklist.md) for exact capture and
-verification steps. No screenshots or recordings have been fabricated.
+![GitHub Actions run summary for commit 53b2901](docs/evidence/part1-ci-success.png.png)
+
+![Successful CI validation job steps for commit 53b2901](docs/evidence/docsevidencepart2-ci-success.png..png)
+
+The supplied [SSMS screenshot](docs/evidence/part1-sql-run.png.png) shows a successful query listing the six tables in `RaceDayDB`. It is supporting schema evidence; it does not show the SQL setup script being executed. The Part 1 video is the place to show the script running live. No live SQL connection was verified by the repository checks recorded here.
+
+## Demonstration videos
+
+- [Part 1 — SQL and database demonstration](https://youtu.be/DtnpXK5yhq0?si=AsyMH0gIYYsvAGLj)
+- [Part 2 — API and application demonstration](https://youtu.be/jX8b3rDCzcM?si=upj6Y6qbrTz7oh3E)
+
+These links were supplied for this submission. Playback, audio quality, and unlisted-link access still need to be checked by the student in a private browser window.
+
+## Final submission
+
+Review the [rubric checklist](docs/Part2_Rubric_Checklist.md), verify the final commit has a green GitHub Actions run and matching screenshots, check both video links in a private browser, and submit the existing repository URL on ARC. The local evidence images are untracked until added to Git; include the evidence files and any approved documentation edits in the final changes so they appear on GitHub.
 
 ## AI assistance disclosure
 
-AI assistance was used to review the assignment and help draft documentation and code. The student
-must review, understand, and adapt the work in line with the assignment's academic integrity
-instructions.
+AI assistance was used to review the assignment and help draft documentation and code. The student must review and understand the submitted work and follow the assignment's academic integrity instructions.

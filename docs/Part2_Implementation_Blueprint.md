@@ -1,7 +1,8 @@
 # Part 2 Implementation Blueprint
 
-This blueprint maps the six-entity Part 1 model and endpoint plan to an ASP.NET Core Web
-API using EF Core and SQL Server. It is a guide, not implemented API code.
+This blueprint maps the six-entity Part 1 model and endpoint plan to the implemented ASP.NET Core
+Web API using EF Core and SQL Server. Use the source files and tests named below as the current
+implementation; this document explains how they correspond to the original design.
 
 ## EF Core entities and relationships
 
@@ -55,8 +56,9 @@ the caller.
 
 ## Swagger, tests, and CI
 
-Register Swagger and XML comments; document every endpoint's input and response codes.
-Test registration/login, session-required responses, role and owner checks, CRUD, matching
-category/event IDs, enrolment duplication, and result visibility. CI must restore, build,
-and run tests, as well as validate the Part 1 documents and DBML. Never treat a CI
-screenshot placeholder as evidence of a successful run.
+Swagger documents all 23 planned operations, including request and response descriptions and the
+session-cookie scheme for protected operations. The xUnit suite covers the HTTP session flow,
+roles and ownership, CRUD workflows, matching category/event IDs, conflicts, and not-found
+responses. GitHub Actions restores, builds, tests, and validates the Part 1 documents and DBML.
+Local checks do not count as proof of a successful remote Actions run; use the actual run as
+evidence after the branch has been pushed.

@@ -18,7 +18,9 @@ public sealed class SessionAuthorizeAttribute(string? requiredRole = null) : Att
 
         if (requiredRole is not null && session.GetString(SessionKeys.Role) != requiredRole)
         {
-            context.Result = new ForbidResult();
+            // ForbidResult calls an authentication handler. This API authenticates
+            // from its server-side session, so return the HTTP status directly.
+            context.Result = new StatusCodeResult(StatusCodes.Status403Forbidden);
         }
     }
 }

@@ -2,15 +2,25 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using RaceDay.Api.Data;
 using RaceDay.Api.Data.Entities;
+using RaceDay.Api.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddAuthorization();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "RaceDay API", Version = "v1" });
+    options.AddSecurityDefinition("SessionCookie", new Microsoft.OpenApi.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.SecuritySchemeType.ApiKey,
+        In = Microsoft.OpenApi.ParameterLocation.Cookie,
+        Name = ".RaceDay.Session",
+        Description = "Log in through POST /api/auth/login. The API sets this server-side session cookie."
+    });
+    options.OperationFilter<SessionCookieOperationFilter>();
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
 });

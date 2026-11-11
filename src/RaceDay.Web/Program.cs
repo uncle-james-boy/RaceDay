@@ -4,7 +4,8 @@ using RaceDay.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()));
 var keyDirectory = builder.Configuration["DataProtection:KeysPath"];
 if (string.IsNullOrWhiteSpace(keyDirectory))
 {
@@ -67,6 +68,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
+app.UseMiddleware<RaceDay.Web.Security.ApiSessionExpiredMiddleware>();
 app.UseAuthorization();
 
 app.MapControllerRoute(

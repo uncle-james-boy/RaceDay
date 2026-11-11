@@ -7,10 +7,28 @@ namespace RaceDay.Web.Services;
 /// <summary>Sends requests to the existing RaceDay API.</summary>
 public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext session)
 {
+    public async Task<ApiOperationResult> RegisterAsync<TRequest>(
+        TRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var content = JsonContent.Create(request);
+        using var response = await SendCoreAsync(
+            HttpMethod.Post,
+            "api/auth/register",
+            content,
+            includeSessionCookie: false,
+            cancellationToken);
+
+        return new ApiOperationResult(
+            response.StatusCode,
+            response.IsSuccessStatusCode ? null : await ReadErrorMessageAsync(response, cancellationToken));
+    }
+
     public async Task<ApiLoginResult> LoginAsync<TRequest>(
         TRequest request,
         CancellationToken cancellationToken = default)
     {
+        session.Clear();
         using var content = JsonContent.Create(request);
         using var response = await SendCoreAsync(
             HttpMethod.Post,
@@ -53,6 +71,22 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
         return await SendCoreAsync(method, relativeUri, content, includeSessionCookie: false, cancellationToken);
     }
 
+    public async Task<ApiOperationResult> LogoutAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Post, "api/auth/logout", cancellationToken: cancellationToken);
+            return new ApiOperationResult(
+                response.StatusCode,
+                response.IsSuccessStatusCode ? null : await ReadErrorMessageAsync(response, cancellationToken));
+        }
+        finally
+        {
+            // End the MVC sign-in even when the API is unavailable; the browser must not retain a stale session.
+            session.Clear();
+        }
+    }
+
     private async Task<HttpResponseMessage> SendCoreAsync(
         HttpMethod method,
         string relativeUri,
@@ -74,10 +108,18 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
                 $"{ApiSessionContext.ApiSessionCookieName}={cookie}");
         }
 
-        return await httpClient.SendAsync(
+        var response = await httpClient.SendAsync(
             request,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
+        if (includeSessionCookie && response.StatusCode == HttpStatusCode.Unauthorized && session.IsAuthenticated)
+        {
+            response.Dispose();
+            session.Clear();
+            throw new ApiSessionExpiredException();
+        }
+
+        return response;
     }
 
     private static void ValidateRelativeUri(string relativeUri)
@@ -127,14 +169,40 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
     {
         try
         {
-            var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>(cancellationToken: cancellationToken);
-            return string.IsNullOrWhiteSpace(error?.Message)
-                ? "The API could not sign in with those details."
-                : error.Message;
+            using var document = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync(cancellationToken),
+                cancellationToken: cancellationToken);
+            var root = document.RootElement;
+            if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(message.GetString()))
+            {
+                return message.GetString()!;
+            }
+
+            if (root.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(title.GetString()))
+            {
+                return title.GetString()!;
+            }
+
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+            {
+                var firstError = errors.EnumerateObject()
+                    .SelectMany(property => property.Value.ValueKind == JsonValueKind.Array
+                        ? property.Value.EnumerateArray().Select(item => item.GetString())
+                        : Enumerable.Empty<string?>())
+                    .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+                if (firstError is not null)
+                {
+                    return firstError;
+                }
+            }
+
+            return "The request could not be completed. Check the details and try again.";
         }
-        catch (JsonException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
         {
-            return "The API could not sign in with those details.";
+            return "The request could not be completed. Check the details and try again.";
         }
     }
 }
@@ -144,6 +212,11 @@ public sealed record ApiLoginResult(HttpStatusCode StatusCode, ApiUserResponse? 
     public bool IsSuccess => User is not null && ErrorMessage is null;
 }
 
-public sealed record ApiUserResponse(int UserID, string FullName, string Email, string Role, string? ProfilePictureUrl);
+public sealed record ApiOperationResult(HttpStatusCode StatusCode, string? ErrorMessage)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && ErrorMessage is null;
+}
 
-public sealed record ApiErrorResponse(string? Message);
+public sealed class ApiSessionExpiredException() : Exception("Your RaceDay session has expired.");
+
+public sealed record ApiUserResponse(int UserID, string FullName, string Email, string Role, string? ProfilePictureUrl);

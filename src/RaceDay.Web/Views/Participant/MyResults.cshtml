@@ -1,0 +1,32 @@
+@model RaceDay.Web.Models.ParticipantListViewModel<RaceDay.Web.Models.ParticipantRaceResult>
+@{
+    ViewData["Title"] = "My Results";
+}
+<h1 class="mb-3">My Race History</h1>
+<p class="text-muted">Results shown here belong to the Participant signed in to this session.</p>
+@if (Model.ErrorMessage is not null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+@if (Model.Items.Count == 0 && Model.ErrorMessage is null)
+{
+    <div class="alert alert-info" role="status">You do not have published race results yet. Results appear here after an Organiser records them.</div>
+}
+else if (Model.Items.Count > 0)
+{
+    <div class="table-responsive card border-0 shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <caption class="visually-hidden">Your personal race results</caption>
+            <thead class="table-light"><tr><th scope="col">Event</th><th scope="col">Date</th><th scope="col">Category</th><th scope="col">Finish time</th><th scope="col">Position</th></tr></thead>
+            <tbody>
+            @foreach (var result in Model.Items)
+            {
+                <tr>
+                    <td>@result.EventName</td>
+                    <td><time datetime="@result.EventDate.ToString("O")">@result.EventDate.ToString("dd MMM yyyy")</time></td>
+                    <td>@result.CategoryName</td>
+                    <td>@result.FinishTime.ToString("hh\\:mm\\:ss")</td>
+                    <td><span class="badge text-bg-primary">@result.Position</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,12 +1,81 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Globalization;
+using Microsoft.AspNetCore.WebUtilities;
+using RaceDay.Web.Models;
 
 namespace RaceDay.Web.Services;
 
 /// <summary>Sends requests to the existing RaceDay API.</summary>
 public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext session)
 {
+    public Task<ApiCallResult<EventCard[]>> GetEventsAsync(
+        string? search,
+        string? eventType,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new Dictionary<string, string?>();
+        if (!string.IsNullOrWhiteSpace(search)) query["search"] = search.Trim();
+        if (!string.IsNullOrWhiteSpace(eventType)) query["eventType"] = eventType.Trim();
+        if (fromDate.HasValue) query["fromDate"] = fromDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        if (toDate.HasValue) query["toDate"] = toDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        var path = query.Count == 0 ? "api/events" : QueryHelpers.AddQueryString("api/events", query);
+        return GetJsonAsync<EventCard[]>(path, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<TResponse>> GetJsonAsync<TResponse>(
+        string relativeUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Get, relativeUri, cancellationToken: cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiCallResult<TResponse>> PostJsonAsync<TRequest, TResponse>(
+        string relativeUri,
+        TRequest body,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var content = JsonContent.Create(body);
+            using var response = await SendAsync(HttpMethod.Post, relativeUri, content, cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiCallResult<TResponse>> PutJsonAsync<TRequest, TResponse>(
+        string relativeUri,
+        TRequest body,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var content = JsonContent.Create(body);
+            using var response = await SendAsync(HttpMethod.Put, relativeUri, content, cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
     public async Task<ApiOperationResult> RegisterAsync<TRequest>(
         TRequest request,
         CancellationToken cancellationToken = default)
@@ -205,6 +274,38 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
             return "The request could not be completed. Check the details and try again.";
         }
     }
+
+    private static async Task<ApiCallResult<TResponse>> ReadResultAsync<TResponse>(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            return new ApiCallResult<TResponse>(response.StatusCode, default,
+                await ReadErrorMessageAsync(response, cancellationToken));
+        }
+
+        if (response.Content.Headers.ContentLength == 0)
+        {
+            return new ApiCallResult<TResponse>(response.StatusCode, default, null);
+        }
+
+        try
+        {
+            var value = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cancellationToken);
+            return value is null
+                ? new ApiCallResult<TResponse>(response.StatusCode, default, "The API returned an empty response.")
+                : new ApiCallResult<TResponse>(response.StatusCode, value, null);
+        }
+        catch (JsonException)
+        {
+            return new ApiCallResult<TResponse>(response.StatusCode, default, "The API returned data that could not be read.");
+        }
+    }
+
+    private static ApiCallResult<TResponse> ApiUnavailable<TResponse>() =>
+        new(HttpStatusCode.ServiceUnavailable, default,
+            "The RaceDay API could not be reached. Check that it is running and try again.");
 }
 
 public sealed record ApiLoginResult(HttpStatusCode StatusCode, ApiUserResponse? User, string? ErrorMessage)
@@ -213,6 +314,11 @@ public sealed record ApiLoginResult(HttpStatusCode StatusCode, ApiUserResponse? 
 }
 
 public sealed record ApiOperationResult(HttpStatusCode StatusCode, string? ErrorMessage)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && ErrorMessage is null;
+}
+
+public sealed record ApiCallResult<T>(HttpStatusCode StatusCode, T? Value, string? ErrorMessage)
 {
     public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && ErrorMessage is null;
 }

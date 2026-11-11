@@ -1,0 +1,33 @@
+@model RaceDay.Web.Models.ParticipantListViewModel<RaceDay.Web.Models.ParticipantEnrolment>
+@{
+    ViewData["Title"] = "My Events";
+}
+<h1 class="mb-3">My Events</h1>
+<p class="text-muted">Your entries are loaded from the RaceDay API for the signed-in account.</p>
+@if (Model.ErrorMessage is not null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+@if (Model.SuccessMessage is not null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+@if (Model.Items.Count == 0 && Model.ErrorMessage is null)
+{
+    <div class="alert alert-info" role="status">You do not have any event entries yet. <a asp-action="Index">Browse upcoming events</a>.</div>
+}
+else if (Model.Items.Count > 0)
+{
+    <div class="table-responsive card border-0 shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <caption class="visually-hidden">Your RaceDay event entries and statuses</caption>
+            <thead class="table-light"><tr><th scope="col">Event</th><th scope="col">Category</th><th scope="col">Entered</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+            @foreach (var entry in Model.Items)
+            {
+                var badge = entry.Status switch { "Confirmed" => "text-bg-success", "Pending" => "text-bg-warning", "Cancelled" => "text-bg-secondary", _ => "text-bg-light" };
+                <tr>
+                    <td><a asp-action="Details" asp-route-eventId="@entry.EventID">@entry.EventName</a></td>
+                    <td>@entry.CategoryName</td>
+                    <td><time datetime="@entry.EnrolmentDate.ToString("O")">@entry.EnrolmentDate.ToString("dd MMM yyyy")</time></td>
+                    <td><span class="badge @badge">@entry.Status</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

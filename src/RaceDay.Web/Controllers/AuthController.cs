@@ -71,6 +71,11 @@ public sealed class AuthController(RaceDayApiClient api, ApiSessionContext sessi
             return LocalRedirect(model.ReturnUrl);
         }
 
+        if (result.User?.Role == "Participant")
+        {
+            return RedirectToAction("Index", "Participant");
+        }
+
         return RedirectToAction("Index", "Home");
     }
 

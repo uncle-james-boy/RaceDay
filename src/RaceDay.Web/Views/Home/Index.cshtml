@@ -1,8 +1,18 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "RaceDay — Find your next event";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="raceday-hero rounded-4 p-4 p-md-5 text-white">
+    <p class="text-uppercase fw-semibold mb-2">RaceDay · Move together</p>
+    <h1 class="display-4 fw-bold">Make your next race day count.</h1>
+    <p class="lead col-lg-8">Discover community runs, walks and rides, choose your category and keep your race history in one place.</p>
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <a asp-controller="Auth" asp-action="Register" class="btn btn-light btn-lg">Create an account</a>
+        <a asp-controller="Auth" asp-action="Login" class="btn btn-outline-light btn-lg">Sign in</a>
+    </div>
+</section>
+<section class="row g-3 mt-3" aria-label="RaceDay features">
+    <div class="col-12 col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h2 class="h5">Explore events</h2><p class="mb-0">Find upcoming events by name, location, type and date.</p></div></div></div>
+    <div class="col-12 col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h2 class="h5">Choose your category</h2><p class="mb-0">Review event categories and routes before submitting your entry.</p></div></div></div>
+    <div class="col-12 col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h2 class="h5">Keep your history</h2><p class="mb-0">Your account shows your entries, profile and published results.</p></div></div></div>
+</section>

@@ -23,7 +23,7 @@ The API uses password hashing and server-side session authentication. A browser 
 
 Categories have an alternate composite key `(CategoryID, EventID)`. Enrolments reference that pair with the matching composite foreign key. This ensures the chosen category belongs to the same event as the enrolment.
 
-The API plan documents 23 operations across authentication, profiles, events, categories, routes, enrolments, and results. Swagger exposes those operations and documents the session-cookie authentication scheme.
+The Part 2 API plan started with 23 operations across authentication, profiles, events, categories, routes, enrolments, and results. Part 3 adds two owner-scoped organiser reads (`GET /api/events/mine` and `GET /api/events/{eventId}/results`), so the current API exposes 25 operations. Swagger documents the session-cookie authentication scheme.
 
 ## Database setup
 

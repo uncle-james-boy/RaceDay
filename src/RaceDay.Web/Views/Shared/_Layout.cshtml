@@ -33,7 +33,9 @@
                             }
                             else if (role == "Organiser")
                             {
-                                <li class="nav-item"><span class="nav-link text-dark">Organiser workspace</span></li>
+                                <li class="nav-item"><a class="nav-link text-dark" asp-controller="Organiser" asp-action="Index">Dashboard</a></li>
+                                <li class="nav-item"><a class="nav-link text-dark" asp-controller="Organiser" asp-action="CreateEvent">Create event</a></li>
+                                <li class="nav-item"><span class="nav-link text-dark">Manage events from your dashboard</span></li>
                             }
                         }
                     </ul>

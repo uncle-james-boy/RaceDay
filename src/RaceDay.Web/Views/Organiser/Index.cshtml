@@ -1,0 +1,52 @@
+@model RaceDay.Web.Models.OrganiserDashboardViewModel
+@{
+    ViewData["Title"] = "Organiser dashboard";
+    var upcoming = Model.Events.Count(item => item.EventDate >= DateTime.Now);
+    var enrolments = Model.Events.Sum(item => item.EnrolmentCount);
+}
+<section class="raceday-hero rounded-4 p-4 p-md-5 mb-4 text-white">
+    <p class="text-uppercase fw-semibold mb-2">Organiser workspace</p>
+    <h1 class="display-6 fw-bold">Your RaceDay events</h1>
+    <p class="lead mb-3">Manage your events, prepare categories and review participant entries.</p>
+    <a asp-action="CreateEvent" class="btn btn-light">Create an event</a>
+</section>
+@if (Model.SuccessMessage is not null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+@if (Model.ErrorMessage is not null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+@if (Model.ErrorMessage is null)
+{
+    <section class="row g-3 mb-4" aria-label="Your event summary">
+        <div class="col-12 col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><p class="text-muted mb-1">Your events</p><p class="display-6 fw-bold mb-0">@Model.Events.Count</p></div></div></div>
+        <div class="col-12 col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><p class="text-muted mb-1">Upcoming dates</p><p class="display-6 fw-bold mb-0">@upcoming</p></div></div></div>
+        <div class="col-12 col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><p class="text-muted mb-1">Total entries</p><p class="display-6 fw-bold mb-0">@enrolments</p></div></div></div>
+    </section>
+    @if (Model.Events.Count == 0)
+    {
+        <div class="alert alert-info" role="status">You have not created an event yet. Create your first event to begin organising a RaceDay.</div>
+    }
+    else
+    {
+        <h2 class="h3 mb-3">Event management</h2>
+        <div class="row row-cols-1 row-cols-lg-2 g-4">
+        @foreach (var item in Model.Events)
+        {
+            <div class="col"><article class="card border-0 shadow-sm h-100">
+                @if (!string.IsNullOrWhiteSpace(item.EventBannerUrl)) { <img src="@item.EventBannerUrl" class="card-img-top event-banner" alt="Banner for @item.Name" /> }
+                <div class="card-body">
+                    <p class="text-uppercase small fw-semibold text-primary mb-1">@item.EventType · @item.Distance.ToString("0.##") km</p>
+                    <h3 class="h4">@item.Name</h3>
+                    <p class="mb-1"><time datetime="@item.EventDate.ToString("O")">@item.EventDate.ToString("ddd, dd MMM yyyy · HH:mm")</time></p>
+                    <p class="text-muted">@item.Location</p>
+                    <p><strong>@item.EnrolmentCount</strong> participant entry/entries</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a asp-action="EditEvent" asp-route-eventId="@item.EventID" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a asp-action="Categories" asp-route-eventId="@item.EventID" class="btn btn-sm btn-outline-primary">Categories</a>
+                        <a asp-action="Enrolments" asp-route-eventId="@item.EventID" class="btn btn-sm btn-outline-primary">Enrolments</a>
+                        <a asp-action="Results" asp-route-eventId="@item.EventID" class="btn btn-sm btn-outline-primary">Results</a>
+                        <a asp-action="DeleteEvent" asp-route-eventId="@item.EventID" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                </div>
+            </article></div>
+        }
+        </div>
+    }
+}

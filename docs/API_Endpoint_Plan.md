@@ -1,6 +1,8 @@
 # RaceDay API Endpoint Plan
 
-This Part 1 contract is the specification for the Part 2 API. The data model is in
+This document records the Part 1 contract implemented by the Part 2 API, plus the two owner-scoped
+read operations added in Part 3 to support the organiser dashboard and published-results view.
+The original Part 2 contract has 23 operations; the current API has 25. The data model is in
 [`schema.dbml`](../schema.dbml) and [`RaceDay_Database.sql`](RaceDay_Database.sql). The six
 entities are Users, Events, Categories, EventRoutes, Enrolments, and Results.
 

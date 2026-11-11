@@ -1,0 +1,10 @@
+@model RaceDay.Web.Models.EventDeleteViewModel
+@{
+    ViewData["Title"] = "Delete event";
+}
+<h1>Delete event?</h1>
+<div class="alert alert-warning" role="alert">This asks the API to delete <strong>@Model.Name</strong>. The API will refuse if categories, routes or participant entries still refer to it.</div>
+<form asp-action="DeleteEventConfirmed" asp-route-eventId="@Model.EventID" method="post">
+    <button type="submit" class="btn btn-danger">Confirm delete</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+</form>

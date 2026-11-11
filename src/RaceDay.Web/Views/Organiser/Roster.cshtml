@@ -1,0 +1,52 @@
+@model RaceDay.Web.Models.OrganiserRosterViewModel
+@{
+    ViewData["Title"] = "Event participants and results";
+    var resultsByEntry = Model.Results.ToDictionary(item => item.EnrolmentID);
+}
+<p><a asp-action="Index">&larr; Back to dashboard</a></p>
+<h1>@Model.EventName</h1>
+<p class="text-muted">Participant entries and published results</p>
+<nav aria-label="Event management" class="mb-3"><div class="nav nav-pills gap-2">
+    <a asp-action="Enrolments" asp-route-eventId="@Model.EventID" class="nav-link @(Context.Request.Path.Value!.EndsWith("enrolments") ? "active" : "")">Enrolments</a>
+    <a asp-action="Results" asp-route-eventId="@Model.EventID" class="nav-link @(Context.Request.Path.Value!.EndsWith("results") ? "active" : "")">Results</a>
+</div></nav>
+@if (Model.SuccessMessage is not null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+@if (Model.ErrorMessage is not null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+@if (Model.Enrolments.Count == 0 && Model.ErrorMessage is null)
+{
+    <div class="alert alert-info" role="status">There are no participant entries for this event yet.</div>
+}
+else if (Model.Enrolments.Count > 0)
+{
+    <div class="table-responsive card border-0 shadow-sm"><table class="table table-hover align-middle mb-0">
+        <caption class="visually-hidden">Participants enrolled in @Model.EventName and race results</caption>
+        <thead class="table-light"><tr><th scope="col">Participant</th><th scope="col">Category</th><th scope="col">Entry status</th><th scope="col">Finish time</th><th scope="col">Position</th><th scope="col">Result action</th></tr></thead>
+        <tbody>@foreach (var entry in Model.Enrolments)
+        {
+            var badge = entry.Status switch { "Confirmed" => "text-bg-success", "Pending" => "text-bg-warning", "Cancelled" => "text-bg-secondary", _ => "text-bg-light" };
+            var hasResult = resultsByEntry.TryGetValue(entry.EnrolmentID, out var raceResult);
+            <tr>
+                <td>@entry.ParticipantName</td><td>@entry.CategoryName</td>
+                <td><span class="badge @badge">@entry.Status</span></td>
+                <td>@(hasResult ? raceResult!.FinishTime.ToString("hh\\:mm\\:ss") : "Not recorded")</td>
+                <td>@(hasResult ? raceResult!.Position.ToString() : "—")</td>
+                <td>
+                    @if (!hasResult && Model.EventID > 0)
+                    {
+                        <form asp-action="CreateResult" asp-route-eventId="@Model.EventID" method="post" class="d-flex flex-wrap gap-2 align-items-end">
+                            <input type="hidden" name="EnrolmentID" value="@entry.EnrolmentID" />
+                            <div><label class="form-label small" for="time-@entry.EnrolmentID">Finish time</label><input id="time-@entry.EnrolmentID" name="FinishTime" class="form-control form-control-sm" placeholder="HH:MM:SS" inputmode="numeric" pattern="\d{1,3}:\d{2}:\d{2}" required /></div>
+                            <div><label class="form-label small" for="position-@entry.EnrolmentID">Position</label><input id="position-@entry.EnrolmentID" name="Position" type="number" min="1" class="form-control form-control-sm" required /></div>
+                            <button type="submit" class="btn btn-sm btn-primary">Publish</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="text-success">Published</span>
+                    }
+                </td>
+            </tr>
+        }</tbody>
+    </table></div>
+    <p class="form-text mt-2">The API accepts results only after the event date. A result is published immediately and cannot be duplicated.</p>
+}

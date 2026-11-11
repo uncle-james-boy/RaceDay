@@ -76,6 +76,24 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
         }
     }
 
+    public async Task<ApiOperationResult> DeleteAsync(
+        string relativeUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Delete, relativeUri, cancellationToken: cancellationToken);
+            return new ApiOperationResult(
+                response.StatusCode,
+                response.IsSuccessStatusCode ? null : await ReadErrorMessageAsync(response, cancellationToken));
+        }
+        catch (HttpRequestException)
+        {
+            return new ApiOperationResult(HttpStatusCode.ServiceUnavailable,
+                "The RaceDay API could not be reached. Check that it is running and try again.");
+        }
+    }
+
     public async Task<ApiOperationResult> RegisterAsync<TRequest>(
         TRequest request,
         CancellationToken cancellationToken = default)

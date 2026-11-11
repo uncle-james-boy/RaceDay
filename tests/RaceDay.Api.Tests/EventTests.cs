@@ -80,6 +80,62 @@ public sealed class EventTests
     }
 
     [Fact]
+    public async Task GetEventsAppliesSearchTypeAndInclusiveDateFilters()
+    {
+        await using var db = CreateDbContext();
+        db.Events.AddRange(
+            CreateEvent(7),
+            new RaceEvent
+            {
+                OrganiserID = 8,
+                Name = "Summer Cycle",
+                EventDate = new DateTime(2027, 6, 15, 9, 30, 0),
+                Location = "Durban",
+                Distance = 40,
+                EventType = "Cycle"
+            },
+            new RaceEvent
+            {
+                OrganiserID = 8,
+                Name = "Spring Run",
+                EventDate = new DateTime(2027, 3, 2),
+                Location = "Cape Town",
+                Distance = 10,
+                EventType = "Run"
+            });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, userId: 2, UserRoles.Participant);
+
+        var result = await controller.GetEvents(new EventSearchRequest
+        {
+            Search = "cape",
+            EventType = "run",
+            FromDate = new DateOnly(2027, 3, 1),
+            ToDate = new DateOnly(2027, 3, 1)
+        }, CancellationToken.None);
+
+        var events = Assert.IsType<List<EventResponse>>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Single(events);
+        Assert.Equal("Spring Race", events[0].Name);
+    }
+
+    [Fact]
+    public void EventSearchRejectsUnsupportedTypesAndReversedDates()
+    {
+        var invalid = new EventSearchRequest
+        {
+            EventType = "Swim",
+            FromDate = new DateOnly(2027, 4, 2),
+            ToDate = new DateOnly(2027, 4, 1)
+        };
+        var errors = invalid.Validate(new ValidationContext(invalid)).ToList();
+
+        Assert.Equal(2, errors.Count);
+        Assert.Contains(errors, error => error.MemberNames.Contains(nameof(EventSearchRequest.EventType)));
+        Assert.Contains(errors, error => error.MemberNames.Contains(nameof(EventSearchRequest.FromDate)));
+    }
+
+    [Fact]
     public void EventRequestRejectsUnsupportedTypesAndNonPositiveDistance()
     {
         var invalid = new EventWriteRequest

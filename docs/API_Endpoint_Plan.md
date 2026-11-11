@@ -33,7 +33,7 @@ hashed before storage. No JWT is issued.
 
 | HTTP Method | Route | Description | Role Required | Request Body | Expected Response |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/events` | Lists events available for browsing. | Public | None | 200 OK |
+| GET | `/api/events` | Lists events available for browsing; optional `search`, `eventType`, `fromDate`, and `toDate` filters are supported. | Public | None | 200 OK; 400 invalid filter |
 | GET | `/api/events/{eventId}` | Reads one event's details. | Public | None | 200 OK; 404 event not found |
 | POST | `/api/events` | Creates an event owned by the caller. | Organiser | `{ name, description, eventDate, location, distance, eventType }` | 201 Created; 400 invalid fields; 401 no session; 403 wrong role |
 | PUT | `/api/events/{eventId}` | Updates an event owned by the caller. | Owner Organiser | Same as event create | 200 OK; 400 invalid fields; 401 no session; 403 not owner; 404 not found |

@@ -68,6 +68,18 @@ public sealed record EventResponse(
     string EventType,
     string? EventBannerUrl);
 
+/// <summary>An Organiser-owned event and its enrolment count.</summary>
+public sealed record OrganiserEventSummaryResponse(
+    int EventID,
+    string Name,
+    string? Description,
+    DateTime EventDate,
+    string Location,
+    decimal Distance,
+    string EventType,
+    string? EventBannerUrl,
+    int EnrolmentCount);
+
 /// <summary>Optional filters for public event browsing.</summary>
 public sealed class EventSearchRequest : IValidatableObject
 {

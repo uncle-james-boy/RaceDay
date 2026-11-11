@@ -34,6 +34,7 @@ hashed before storage. No JWT is issued.
 | HTTP Method | Route | Description | Role Required | Request Body | Expected Response |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/events` | Lists events available for browsing; optional `search`, `eventType`, `fromDate`, and `toDate` filters are supported. | Public | None | 200 OK; 400 invalid filter |
+| GET | `/api/events/mine` | Lists only the signed-in Organiser's events with enrolment totals. | Organiser | None | 200 OK; 401 no session; 403 wrong role |
 | GET | `/api/events/{eventId}` | Reads one event's details. | Public | None | 200 OK; 404 event not found |
 | POST | `/api/events` | Creates an event owned by the caller. | Organiser | `{ name, description, eventDate, location, distance, eventType }` | 201 Created; 400 invalid fields; 401 no session; 403 wrong role |
 | PUT | `/api/events/{eventId}` | Updates an event owned by the caller. | Owner Organiser | Same as event create | 200 OK; 400 invalid fields; 401 no session; 403 not owner; 404 not found |
@@ -59,6 +60,7 @@ hashed before storage. No JWT is issued.
 | POST | `/api/enrolments` | Enrols the caller using a category from the selected event. | Participant | `{ eventId, categoryId }` | 201 Created; 400 category/event mismatch; 401 no session; 403 wrong role; 404 event/category not found; 409 duplicate enrolment |
 | GET | `/api/enrolments` | Lists only the caller's enrolments; identity is read from the session. | Participant | None | 200 OK; 401 no session; 403 wrong role |
 | GET | `/api/events/{eventId}/enrolments` | Lists enrolments for an event owned by the caller. | Owner Organiser | None | 200 OK; 401 no session; 403 not owner; 404 event not found |
+| GET | `/api/events/{eventId}/results` | Lists published results for an event owned by the caller. | Owner Organiser | None | 200 OK; 401 no session; 403 not owner; 404 event not found |
 | POST | `/api/results` | Records a result for an enrolment in an event owned by the caller. | Owner Organiser | `{ enrolmentId, finishTime, position }` | 201 Created; 400 invalid fields; 401 no session; 403 not owner; 404 enrolment not found; 409 result already exists |
 | GET | `/api/results` | Lists only the caller's results; identity is read from the session. | Participant | None | 200 OK; 401 no session; 403 wrong role |
 

@@ -89,6 +89,37 @@ public sealed class ResultsController(RaceDayDbContext dbContext) : ControllerBa
         return Ok(results);
     }
 
+    /// <summary>Lists published results for an event owned by the signed-in Organiser.</summary>
+    [HttpGet("/api/events/{eventId:int}/results")]
+    [SessionAuthorize(UserRoles.Organiser)]
+    [ProducesResponseType(typeof(IReadOnlyList<RaceResultResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<RaceResultResponse>>> GetForEvent(
+        int eventId,
+        CancellationToken cancellationToken)
+    {
+        var raceEvent = await dbContext.Events.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.EventID == eventId, cancellationToken);
+        if (raceEvent is null)
+        {
+            return NotFound();
+        }
+
+        if (raceEvent.OrganiserID != HttpContext.Session.GetInt32(SessionKeys.UserId))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        var results = await dbContext.Results.AsNoTracking()
+            .Where(item => item.Enrolment!.EventID == eventId)
+            .OrderBy(item => item.Position)
+            .Select(ToResponse())
+            .ToListAsync(cancellationToken);
+        return Ok(results);
+    }
+
     private static System.Linq.Expressions.Expression<Func<RaceResult, RaceResultResponse>> ToResponse() => item =>
         new RaceResultResponse(
             item.ResultID,

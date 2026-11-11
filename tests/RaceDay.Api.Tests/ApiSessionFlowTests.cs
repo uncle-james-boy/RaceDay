@@ -33,7 +33,7 @@ public sealed class ApiSessionFlowTests
         Assert.Equal(HttpStatusCode.OK, swaggerResponse.StatusCode);
         using var swagger = JsonDocument.Parse(await swaggerResponse.Content.ReadAsStringAsync());
         var paths = swagger.RootElement.GetProperty("paths");
-        Assert.Equal(23, CountOperations(paths));
+        Assert.Equal(25, CountOperations(paths));
         foreach (var path in paths.EnumerateObject())
         {
             foreach (var operation in path.Value.EnumerateObject())

@@ -52,6 +52,25 @@ public sealed class EventsController(RaceDayDbContext dbContext) : ControllerBas
         return Ok(events);
     }
 
+    /// <summary>Lists only the current Organiser's events with enrolment totals.</summary>
+    [HttpGet("mine")]
+    [SessionAuthorize(UserRoles.Organiser)]
+    [ProducesResponseType(typeof(IReadOnlyList<OrganiserEventSummaryResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IReadOnlyList<OrganiserEventSummaryResponse>>> GetMine(CancellationToken cancellationToken)
+    {
+        var organiserId = HttpContext.Session.GetInt32(SessionKeys.UserId)!.Value;
+        var events = await dbContext.Events.AsNoTracking()
+            .Where(item => item.OrganiserID == organiserId)
+            .OrderBy(item => item.EventDate)
+            .Select(item => new OrganiserEventSummaryResponse(
+                item.EventID, item.Name, item.Description, item.EventDate, item.Location,
+                item.Distance, item.EventType, item.EventBannerUrl, item.Enrolments.Count))
+            .ToListAsync(cancellationToken);
+        return Ok(events);
+    }
+
     /// <summary>Returns one event, or 404 when its identifier does not exist.</summary>
     [HttpGet("{eventId:int}")]
     [ProducesResponseType(typeof(EventResponse), StatusCodes.Status200OK)]

@@ -120,6 +120,38 @@ public sealed class EventTests
     }
 
     [Fact]
+    public async Task OrganiserEventSummaryReturnsOnlyOwnedEventsAndEnrolmentCounts()
+    {
+        await using var db = CreateDbContext();
+        var own = CreateEvent(7);
+        var other = CreateEvent(8);
+        db.Events.AddRange(own, other);
+        await db.SaveChangesAsync();
+        var category = new Category { EventID = own.EventID, CategoryName = "Open" };
+        var participant = new User
+        {
+            FullName = "Runner", Email = "runner@example.test", PasswordHash = "hash", Role = UserRoles.Participant
+        };
+        db.Users.Add(participant);
+        db.Categories.Add(category);
+        await db.SaveChangesAsync();
+        db.Enrolments.Add(new Enrolment
+        {
+            EventID = own.EventID, CategoryID = category.CategoryID, ParticipantID = participant.UserID,
+            Status = "Pending", EnrolmentDate = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, userId: 7, UserRoles.Organiser);
+
+        var result = await controller.GetMine(CancellationToken.None);
+
+        var rows = Assert.IsType<List<OrganiserEventSummaryResponse>>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        var row = Assert.Single(rows);
+        Assert.Equal(own.EventID, row.EventID);
+        Assert.Equal(1, row.EnrolmentCount);
+    }
+
+    [Fact]
     public void EventSearchRejectsUnsupportedTypesAndReversedDates()
     {
         var invalid = new EventSearchRequest

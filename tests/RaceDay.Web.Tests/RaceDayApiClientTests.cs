@@ -9,11 +9,12 @@ public sealed class RaceDayApiClientTests
     public async Task SendAsync_CombinesBaseAddressWithRelativeApiPath()
     {
         var handler = new RecordingHandler();
+        var (session, _) = TestSessions.Create();
         using var httpClient = new HttpClient(handler)
         {
             BaseAddress = new Uri("https://localhost:7107/")
         };
-        var api = new RaceDayApiClient(httpClient);
+        var api = new RaceDayApiClient(httpClient, session);
 
         using var response = await api.SendAsync(HttpMethod.Get, "api/events");
 
@@ -33,7 +34,8 @@ public sealed class RaceDayApiClientTests
         {
             BaseAddress = new Uri("https://localhost:7107/")
         };
-        var api = new RaceDayApiClient(httpClient);
+        var (session, _) = TestSessions.Create();
+        var api = new RaceDayApiClient(httpClient, session);
 
         await Assert.ThrowsAsync<ArgumentException>(() => api.SendAsync(HttpMethod.Get, path));
     }

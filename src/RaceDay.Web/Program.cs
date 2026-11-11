@@ -4,6 +4,13 @@ using RaceDay.Web.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped(services =>
+{
+    var context = services.GetRequiredService<IHttpContextAccessor>().HttpContext
+        ?? throw new InvalidOperationException("No active MVC request is available.");
+    return new ApiSessionContext(context.Session);
+});
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {

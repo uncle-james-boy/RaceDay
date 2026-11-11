@@ -1,9 +1,24 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using RaceDay.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+var keyDirectory = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(keyDirectory))
+{
+    keyDirectory = Path.Combine(builder.Environment.ContentRootPath, ".data-protection-keys");
+}
+
+Directory.CreateDirectory(keyDirectory);
+var dataProtection = builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+if (OperatingSystem.IsWindows())
+{
+    dataProtection.ProtectKeysWithDpapi();
+}
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(services =>
 {

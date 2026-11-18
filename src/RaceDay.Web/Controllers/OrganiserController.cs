@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RaceDay.Web.Models;
 using RaceDay.Web.Security;
@@ -27,8 +28,11 @@ public sealed class OrganiserController(RaceDayApiClient api) : Controller
 
     [HttpPost("events/create")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(EventEditModel.MaximumBannerFileSizeBytes + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = EventEditModel.MaximumBannerFileSizeBytes)]
     public async Task<IActionResult> CreateEvent([Bind(Prefix = "Event")] EventEditModel model, CancellationToken cancellationToken)
     {
+        ValidateBannerSize(model.BannerFile);
         ValidateEventType(model.EventType);
         if (!ModelState.IsValid) return View("EventForm", new EventFormViewModel { Event = model });
 
@@ -36,9 +40,29 @@ public sealed class OrganiserController(RaceDayApiClient api) : Controller
         {
             model.Name, model.Description, model.EventDate, model.Location, model.Distance, model.EventType
         }, cancellationToken);
+        var createdEventId = result.Value?.EventID ?? 0;
+        if ((int)result.StatusCode is >= 200 and < 300
+            && createdEventId <= 0)
+        {
+            TempData["OrganiserError"] =
+                "The API did not return a usable event ID. The event may already have been created; check your dashboard before submitting again.";
+            return RedirectToAction(nameof(Index));
+        }
+
         if (!result.IsSuccess)
         {
             return View("EventForm", new EventFormViewModel { Event = model, ErrorMessage = result.ErrorMessage });
+        }
+
+        if (model.BannerFile is not null)
+        {
+            var bannerResult = await UploadBannerAsync(createdEventId, model.BannerFile, cancellationToken);
+            if (!bannerResult.IsSuccess)
+            {
+                TempData["OrganiserError"] =
+                    $"The event was created, but its banner was not uploaded. {bannerResult.ErrorMessage ?? "Select the event from your dashboard and retry the upload."}";
+                return RedirectToAction(nameof(EditEvent), new { eventId = createdEventId });
+            }
         }
 
         TempData["OrganiserSuccess"] = "The event was created.";
@@ -53,6 +77,8 @@ public sealed class OrganiserController(RaceDayApiClient api) : Controller
         if (!result.IsSuccess || result.Value is null) return ApiFailure(result.StatusCode);
         return View("EventForm", new EventFormViewModel
         {
+            ErrorMessage = TempData["OrganiserError"] as string,
+            SuccessMessage = TempData["OrganiserSuccess"] as string,
             Event = new EventEditModel
             {
                 EventID = result.Value.EventID,
@@ -69,9 +95,12 @@ public sealed class OrganiserController(RaceDayApiClient api) : Controller
 
     [HttpPost("events/{eventId:int}/edit")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(EventEditModel.MaximumBannerFileSizeBytes + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = EventEditModel.MaximumBannerFileSizeBytes)]
     public async Task<IActionResult> EditEvent(int eventId, [Bind(Prefix = "Event")] EventEditModel model, CancellationToken cancellationToken)
     {
         if (!await OwnsEventAsync(eventId, cancellationToken)) return NotFound();
+        ValidateBannerSize(model.BannerFile);
         ValidateEventType(model.EventType);
         if (!ModelState.IsValid) return View("EventForm", new EventFormViewModel { Event = model });
 
@@ -82,6 +111,17 @@ public sealed class OrganiserController(RaceDayApiClient api) : Controller
         if (!result.IsSuccess)
         {
             return View("EventForm", new EventFormViewModel { Event = model, ErrorMessage = result.ErrorMessage });
+        }
+
+        if (model.BannerFile is not null)
+        {
+            var bannerResult = await UploadBannerAsync(eventId, model.BannerFile, cancellationToken);
+            if (!bannerResult.IsSuccess)
+            {
+                TempData["OrganiserError"] =
+                    $"The event details were saved, but its banner was not uploaded. {bannerResult.ErrorMessage ?? "Select a valid image and retry."}";
+                return RedirectToAction(nameof(EditEvent), new { eventId });
+            }
         }
 
         TempData["OrganiserSuccess"] = "The event was updated.";
@@ -308,6 +348,21 @@ public sealed class OrganiserController(RaceDayApiClient api) : Controller
 
     private async Task<bool> OwnsEventAsync(int eventId, CancellationToken cancellationToken) =>
         await GetOwnedEventAsync(eventId, cancellationToken) is not null;
+
+    private async Task<ApiCallResult<EventBannerUploadResponse>> UploadBannerAsync(
+        int eventId,
+        IFormFile file,
+        CancellationToken cancellationToken) =>
+        await api.PostFileAsync<EventBannerUploadResponse>(
+            $"api/events/{eventId}/banner", file, cancellationToken);
+
+    private void ValidateBannerSize(IFormFile? file)
+    {
+        if (file is not null && (file.Length == 0 || file.Length > EventEditModel.MaximumBannerFileSizeBytes))
+        {
+            ModelState.AddModelError("Event.BannerFile", "Choose a non-empty JPEG, PNG, or WebP image no larger than 5 MB.");
+        }
+    }
 
     private IActionResult ApiFailure(System.Net.HttpStatusCode statusCode) =>
         statusCode == System.Net.HttpStatusCode.NotFound ? NotFound() : StatusCode(503);

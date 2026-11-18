@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace RaceDay.Web.Models;
 
@@ -14,6 +15,8 @@ public sealed class OrganiserDashboardViewModel
 
 public sealed class EventEditModel
 {
+    public const long MaximumBannerFileSizeBytes = 5L * 1024 * 1024;
+
     public int? EventID { get; set; }
 
     [Required, StringLength(150, MinimumLength = 2)]
@@ -27,20 +30,26 @@ public sealed class EventEditModel
     [Required, StringLength(200)]
     public string Location { get; set; } = string.Empty;
 
-    [Range(typeof(decimal), "0.01", "999.99")]
+    [Range(typeof(decimal), "0.01", "999.99",
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal Distance { get; set; }
 
     [Required]
     public string EventType { get; set; } = "Run";
 
     public string? EventBannerUrl { get; set; }
+
+    public IFormFile? BannerFile { get; set; }
 }
 
 public sealed class EventFormViewModel
 {
     public EventEditModel Event { get; set; } = new();
     public string? ErrorMessage { get; set; }
+    public string? SuccessMessage { get; set; }
 }
+
+public sealed record EventBannerUploadResponse(int EventID, string EventBannerUrl);
 
 public sealed class EventDeleteViewModel
 {
@@ -66,7 +75,8 @@ public sealed class CategoryEditModel
     [Range(0, 150)]
     public int? MaxAge { get; set; }
 
-    [Range(typeof(decimal), "0.01", "999.99")]
+    [Range(typeof(decimal), "0.01", "999.99",
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Distance { get; set; }
 }
 

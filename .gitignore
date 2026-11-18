@@ -2,6 +2,7 @@
 .env
 .env.local
 /src/RaceDay.Web/.data-protection-keys/
+/.data-protection-keys/
 
 # OS generated files
 .DS_Store

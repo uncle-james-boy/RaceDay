@@ -1,0 +1,17 @@
+.git
+.github
+.data-protection-keys
+.env
+.env.*
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/*.user
+**/*.suo
+tests
+docs
+tools
+README.md
+schema.dbml
+RaceDay.sln

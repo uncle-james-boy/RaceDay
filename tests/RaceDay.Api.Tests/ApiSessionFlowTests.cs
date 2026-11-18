@@ -33,7 +33,7 @@ public sealed class ApiSessionFlowTests
         Assert.Equal(HttpStatusCode.OK, swaggerResponse.StatusCode);
         using var swagger = JsonDocument.Parse(await swaggerResponse.Content.ReadAsStringAsync());
         var paths = swagger.RootElement.GetProperty("paths");
-        Assert.Equal(25, CountOperations(paths));
+        Assert.Equal(26, CountOperations(paths));
         foreach (var path in paths.EnumerateObject())
         {
             foreach (var operation in path.Value.EnumerateObject())
@@ -48,6 +48,7 @@ public sealed class ApiSessionFlowTests
         Assert.Contains("Creates an event owned by the signed-in Organiser.",
             paths.GetProperty("/api/events").GetProperty("post").GetProperty("summary").GetString());
         Assert.Equal(1, paths.GetProperty("/api/events").GetProperty("post").GetProperty("security").GetArrayLength());
+        Assert.Equal(1, paths.GetProperty("/api/events/{eventId}/banner").GetProperty("post").GetProperty("security").GetArrayLength());
         Assert.False(paths.GetProperty("/api/events").GetProperty("get").TryGetProperty("security", out _));
 
         var publicEvents = await anonymous.GetAsync("/api/events");
@@ -87,8 +88,7 @@ public sealed class ApiSessionFlowTests
         Assert.False((await participantProfile.Content.ReadAsStringAsync()).Contains("PasswordHash", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(HttpStatusCode.OK, (await participant.PutAsJsonAsync("/api/users/profile", new
         {
-            fullName = "Alex Updated",
-            profilePictureUrl = "https://example.com/alex.png"
+            fullName = "Alex Updated"
         })).StatusCode);
 
         var forbiddenCreate = await participant.PostAsJsonAsync("/api/events", ValidEventBody());
@@ -175,8 +175,7 @@ public sealed class ApiSessionFlowTests
 
         Assert.Equal(HttpStatusCode.BadRequest, (await participant.PutAsJsonAsync("/api/users/profile", new
         {
-            fullName = "Alex Updated",
-            profilePictureUrl = "not-a-url"
+            fullName = ""
         })).StatusCode);
 
         var mismatch = await participant.PostAsJsonAsync("/api/enrolments", new

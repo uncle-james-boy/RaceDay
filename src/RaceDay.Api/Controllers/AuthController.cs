@@ -84,7 +84,8 @@ public sealed class AuthController(
     }
 
     private static UserResponse ToResponse(User user) =>
-        new(user.UserID, user.FullName, user.Email, user.Role, user.ProfilePictureUrl);
+        new(user.UserID, user.FullName, user.Email, user.Role,
+            UsersController.TryGetProfileBlobName(user.ProfilePictureUrl, out _));
 }
 
 public sealed class RegisterRequest
@@ -122,5 +123,5 @@ public sealed class LoginRequest
 /// <param name="FullName">The person's display name.</param>
 /// <param name="Email">The unique sign-in email.</param>
 /// <param name="Role">The Organiser or Participant role.</param>
-/// <param name="ProfilePictureUrl">An optional profile picture URL.</param>
-public sealed record UserResponse(int UserID, string FullName, string Email, string Role, string? ProfilePictureUrl);
+/// <param name="HasProfilePicture">Whether a private profile picture is available.</param>
+public sealed record UserResponse(int UserID, string FullName, string Email, string Role, bool HasProfilePicture);

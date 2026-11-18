@@ -80,7 +80,7 @@ The API launch profile normally serves Swagger at `https://localhost:7107/swagge
 
 ## Verification and evidence
 
-Automated tests use EF Core InMemory and test HTTP clients; they do not prove a live SQL Server or Azurite connection. The checked-in CI screenshots below are from earlier Part 1/Part 2 runs and do not verify Part 3. The workflow now includes `part3`, including Docker Compose configuration validation and image builds. No Part 3 Actions run has been recorded in the repository yet; capture and verify a real green run for the published Part 3 commit before treating Part 3 CI evidence as complete.
+Automated tests use EF Core InMemory and test HTTP clients; they do not prove a live SQL Server or Azurite connection. The checked-in CI screenshots below are from earlier Part 1/Part 2 runs and do not verify Part 3. The workflow includes `part3`, Docker Compose configuration validation, and API/Web image builds. GitHub Actions [Run #15](https://github.com/uncle-james-boy/RaceDay/actions/runs/44269215155) succeeded on commit `2289cb8`. A screenshot of that Part 3 run has not yet been saved in the repository. The `part3` branch contains 17 meaningful commits relative to `origin/main`; the rubric target is 20.
 
 **GitHub Actions evidence for commit `53b2901`:** [Run #8](https://github.com/uncle-james-boy/RaceDay/actions/runs/39057052022)
 
@@ -95,13 +95,13 @@ The supplied [SSMS screenshot](docs/evidence/part1-sql-run.png.png) shows a succ
 - [Part 1 — SQL and database demonstration](https://youtu.be/DtnpXK5yhq0?si=AsyMH0gIYYsvAGLj)
 - [Part 2 — API and application demonstration](https://youtu.be/jX8b3rDCzcM?si=upj6Y6qbrTz7oh3E)
 
-These links were supplied for this submission. Playback, audio quality, and unlisted-link access still need to be checked by the student in a private browser window.
+These links were supplied for this submission. The student reports that application browser checks are complete. Playback, audio quality, and unlisted-link access for the Part 1 and Part 2 videos still need to be checked in a private browser window.
 
 The Part 3 rubric requires a video presentation. Its link is still outstanding; add it after recording and uploading the video. Do not use a placeholder link.
 
 ## Final submission
 
-Use the [Part 3 rubric checklist](docs/Part3_Rubric_Checklist.md) to track the nine criteria and the evidence still needed. The checked-in CI images are from Part 1/Part 2; a real successful Part 3 Actions run and screenshot are still required. Record the Part 3 video link after uploading the recording, verify all video links in a private browser, and submit the existing repository URL on ARC.
+Use the [Part 3 rubric checklist](docs/Part3_Rubric_Checklist.md) to track the nine criteria and remaining evidence. The Part 3 Actions run succeeded, but its screenshot is not yet saved here. Record the Part 3 video link after uploading the recording, verify all video links in a private browser, reach the rubric's 20 meaningful Part 3 commits through genuine work, and submit the existing repository URL on ARC. Application browser checks have been completed according to the student; this README does not claim that the assignment is fully submitted or that all evidence is complete.
 
 ## AI assistance disclosure
 

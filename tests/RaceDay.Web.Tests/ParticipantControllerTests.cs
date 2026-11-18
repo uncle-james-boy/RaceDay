@@ -234,7 +234,10 @@ public sealed class ParticipantControllerTests
             : JsonResponse(HttpStatusCode.BadGateway, """{"message":"Storage is unavailable."}""")));
         var controller = CreateController(handler);
         using var imageStream = new MemoryStream([1, 2, 3]);
-        var file = new FormFile(imageStream, 0, imageStream.Length, "Edit.ProfilePictureFile", "profile.png");
+        var file = new FormFile(imageStream, 0, imageStream.Length, "Edit.ProfilePictureFile", "profile.png")
+        {
+            Headers = new HeaderDictionary { ["Content-Type"] = "image/png" }
+        };
 
         var result = await controller.UpdateProfile(new UpdateParticipantProfileModel
         {

@@ -14,6 +14,7 @@ using RaceDay.Api.Authentication;
 using RaceDay.Api.Controllers;
 using RaceDay.Api.Data;
 using RaceDay.Api.Data.Entities;
+using RaceDay.Api.Services;
 using Xunit;
 
 namespace RaceDay.Api.Tests;
@@ -285,6 +286,7 @@ public sealed class ApiSessionFlowTests
         builder.Services.AddDbContext<RaceDayDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+        builder.Services.AddSingleton<IBlobStorageService, UnusedBlobStorage>();
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
@@ -304,6 +306,35 @@ public sealed class ApiSessionFlowTests
         app.UseAuthorization();
         app.MapControllers();
         return app;
+    }
+
+    private sealed class UnusedBlobStorage : IBlobStorageService
+    {
+        public Task<Uri> UploadAsync(
+            RaceDayBlobContainer container,
+            string blobName,
+            Stream content,
+            string contentType,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("Blob storage is not used by this integration test.");
+
+        public Task<StoredBlob?> DownloadAsync(
+            RaceDayBlobContainer container,
+            string blobName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<StoredBlob?>(null);
+
+        public Task<bool> DeleteIfExistsAsync(
+            RaceDayBlobContainer container,
+            string blobName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public bool TryGetBlobNameFromUri(RaceDayBlobContainer container, Uri blobUri, out string blobName)
+        {
+            blobName = string.Empty;
+            return false;
+        }
     }
 
     private static HttpClient CreateSessionClient(string address, CookieContainer cookies) => new(

@@ -1,0 +1,438 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Globalization;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Http;
+using RaceDay.Web.Models;
+
+namespace RaceDay.Web.Services;
+
+/// <summary>Sends requests to the existing RaceDay API.</summary>
+public sealed class RaceDayApiClient(
+    HttpClient httpClient,
+    ApiSessionContext session,
+    ILogger<RaceDayApiClient>? logger = null)
+{
+    public Task<ApiCallResult<EventCard[]>> GetEventsAsync(
+        string? search,
+        string? eventType,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new Dictionary<string, string?>();
+        if (!string.IsNullOrWhiteSpace(search)) query["search"] = search.Trim();
+        if (!string.IsNullOrWhiteSpace(eventType)) query["eventType"] = eventType.Trim();
+        if (fromDate.HasValue) query["fromDate"] = fromDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        if (toDate.HasValue) query["toDate"] = toDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        var path = query.Count == 0 ? "api/events" : QueryHelpers.AddQueryString("api/events", query);
+        return GetJsonAsync<EventCard[]>(path, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<TResponse>> GetJsonAsync<TResponse>(
+        string relativeUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Get, relativeUri, cancellationToken: cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiFileCallResult> GetFileAsync(
+        string relativeUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Get, relativeUri, cancellationToken: cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new ApiFileCallResult(response.StatusCode, null, null,
+                    await ReadErrorMessageAsync(response, cancellationToken));
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            if (contentType is not "image/jpeg" and not "image/png" and not "image/webp")
+            {
+                return new ApiFileCallResult(response.StatusCode, null, null,
+                    "The API returned an unsupported image format.");
+            }
+
+            var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            if (content.Length == 0 || content.Length > 2 * 1024 * 1024)
+            {
+                return new ApiFileCallResult(response.StatusCode, null, null,
+                    "The API returned an invalid profile picture.");
+            }
+
+            return new ApiFileCallResult(response.StatusCode, content, contentType, null);
+        }
+        catch (HttpRequestException)
+        {
+            return new ApiFileCallResult(HttpStatusCode.ServiceUnavailable, null, null,
+                "The RaceDay API could not be reached. Check that it is running and try again.");
+        }
+    }
+
+    public async Task<ApiCallResult<TResponse>> PostJsonAsync<TRequest, TResponse>(
+        string relativeUri,
+        TRequest body,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var content = JsonContent.Create(body);
+            using var response = await SendAsync(HttpMethod.Post, relativeUri, content, cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiCallResult<TResponse>> PostFileAsync<TResponse>(
+        string relativeUri,
+        IFormFile file,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var fileStream = file.OpenReadStream();
+            using var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = MediaTypeHeaderValue.TryParse(file.ContentType, out var parsedType)
+                ? parsedType
+                : new MediaTypeHeaderValue("application/octet-stream");
+            content.Add(fileContent, "file", Path.GetFileName(file.FileName.Replace('\\', '/')));
+
+            using var response = await SendAsync(HttpMethod.Post, relativeUri, content, cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiCallResult<TResponse>> PutJsonAsync<TRequest, TResponse>(
+        string relativeUri,
+        TRequest body,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var content = JsonContent.Create(body);
+            using var response = await SendAsync(HttpMethod.Put, relativeUri, content, cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiOperationResult> DeleteAsync(
+        string relativeUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Delete, relativeUri, cancellationToken: cancellationToken);
+            return new ApiOperationResult(
+                response.StatusCode,
+                response.IsSuccessStatusCode ? null : await ReadErrorMessageAsync(response, cancellationToken));
+        }
+        catch (HttpRequestException)
+        {
+            return new ApiOperationResult(HttpStatusCode.ServiceUnavailable,
+                "The RaceDay API could not be reached. Check that it is running and try again.");
+        }
+    }
+
+    public async Task<ApiOperationResult> RegisterAsync<TRequest>(
+        TRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var content = JsonContent.Create(request);
+        using var response = await SendCoreAsync(
+            HttpMethod.Post,
+            "api/auth/register",
+            content,
+            includeSessionCookie: false,
+            cancellationToken);
+
+        return new ApiOperationResult(
+            response.StatusCode,
+            response.IsSuccessStatusCode ? null : await ReadErrorMessageAsync(response, cancellationToken));
+    }
+
+    public async Task<ApiLoginResult> LoginAsync<TRequest>(
+        TRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        session.Clear();
+        using var content = JsonContent.Create(request);
+        using var response = await SendCoreAsync(
+            HttpMethod.Post,
+            "api/auth/login",
+            content,
+            includeSessionCookie: false,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new ApiLoginResult(response.StatusCode, null, await ReadErrorMessageAsync(response, cancellationToken));
+        }
+
+        var user = await response.Content.ReadFromJsonAsync<ApiUserResponse>(cancellationToken: cancellationToken);
+        if (user is null)
+        {
+            throw new InvalidOperationException("The API returned an empty login response.");
+        }
+
+        var cookie = ReadSessionCookie(response);
+        session.SignIn(user, cookie);
+        return new ApiLoginResult(response.StatusCode, user, null);
+    }
+
+    public async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method,
+        string relativeUri,
+        HttpContent? content = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await SendCoreAsync(method, relativeUri, content, includeSessionCookie: true, cancellationToken);
+    }
+
+    public async Task<HttpResponseMessage> SendUnauthenticatedAsync(
+        HttpMethod method,
+        string relativeUri,
+        HttpContent? content = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await SendCoreAsync(method, relativeUri, content, includeSessionCookie: false, cancellationToken);
+    }
+
+    public async Task<ApiOperationResult> LogoutAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Post, "api/auth/logout", cancellationToken: cancellationToken);
+            return new ApiOperationResult(
+                response.StatusCode,
+                response.IsSuccessStatusCode ? null : await ReadErrorMessageAsync(response, cancellationToken));
+        }
+        finally
+        {
+            // End the MVC sign-in even when the API is unavailable; the browser must not retain a stale session.
+            session.Clear();
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendCoreAsync(
+        HttpMethod method,
+        string relativeUri,
+        HttpContent? content,
+        bool includeSessionCookie,
+        CancellationToken cancellationToken)
+    {
+        ValidateRelativeUri(relativeUri);
+
+        using var request = new HttpRequestMessage(method, relativeUri)
+        {
+            Content = content
+        };
+
+        if (includeSessionCookie && session.ApiSessionCookie is { Length: > 0 } cookie)
+        {
+            request.Headers.TryAddWithoutValidation(
+                "Cookie",
+                $"{ApiSessionContext.ApiSessionCookieName}={cookie}");
+        }
+
+        var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        if (includeSessionCookie && response.StatusCode == HttpStatusCode.Unauthorized && session.IsAuthenticated)
+        {
+            response.Dispose();
+            session.Clear();
+            throw new ApiSessionExpiredException();
+        }
+
+        return response;
+    }
+
+    private static void ValidateRelativeUri(string relativeUri)
+    {
+        if (string.IsNullOrWhiteSpace(relativeUri)
+            || relativeUri.StartsWith("/", StringComparison.Ordinal)
+            || relativeUri.StartsWith('\\')
+            || relativeUri.Contains('\\')
+            || relativeUri.Split('/').Any(segment => segment == "..")
+            || Uri.TryCreate(relativeUri, UriKind.Absolute, out _))
+        {
+            throw new ArgumentException("API request paths must be safe, relative paths.", nameof(relativeUri));
+        }
+    }
+
+    private string ReadSessionCookie(HttpResponseMessage response)
+    {
+        if (response.Headers.TryGetValues("Set-Cookie", out var headers))
+        {
+            foreach (var header in headers)
+            {
+                var pairEnd = header.IndexOf(';');
+                var pair = pairEnd < 0 ? header : header[..pairEnd];
+                var separator = pair.IndexOf('=');
+                if (separator <= 0
+                    || !string.Equals(pair[..separator].Trim(), ApiSessionContext.ApiSessionCookieName, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var value = pair[(separator + 1)..];
+                if (ApiSessionContext.IsValidApiCookieValue(value))
+                {
+                    return value;
+                }
+
+                var disallowedCodePoints = value.EnumerateRunes()
+                    .Select(rune => rune.Value)
+                    .Where(codePoint => !ApiSessionContext.IsCookieOctet(codePoint))
+                    .Distinct()
+                    .OrderBy(codePoint => codePoint)
+                    .ToArray();
+                var containsDisallowedCharacters = disallowedCodePoints.Length > 0;
+                var exceedsCharacterLimit = value.Length > 512;
+                logger?.LogWarning(
+                    "API session cookie rejected. ValueLength={CookieValueLength}; ContainsDisallowedCharacters={ContainsDisallowedCharacters}; Exceeds512CharacterLimit={ExceedsCharacterLimit}; DisallowedUnicodeCodePoints=[{DisallowedUnicodeCodePoints}].",
+                    value.Length,
+                    containsDisallowedCharacters,
+                    exceedsCharacterLimit,
+                    string.Join(",", disallowedCodePoints));
+
+                throw new InvalidOperationException("The API returned an invalid session cookie.");
+            }
+        }
+
+        throw new InvalidOperationException("The API login succeeded but did not set its session cookie.");
+    }
+
+    private static async Task<string> ReadErrorMessageAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var document = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync(cancellationToken),
+                cancellationToken: cancellationToken);
+            var root = document.RootElement;
+            if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(message.GetString()))
+            {
+                return message.GetString()!;
+            }
+
+            if (root.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(title.GetString()))
+            {
+                return title.GetString()!;
+            }
+
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+            {
+                var firstError = errors.EnumerateObject()
+                    .SelectMany(property => property.Value.ValueKind == JsonValueKind.Array
+                        ? property.Value.EnumerateArray().Select(item => item.GetString())
+                        : Enumerable.Empty<string?>())
+                    .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+                if (firstError is not null)
+                {
+                    return firstError;
+                }
+            }
+
+            return "The request could not be completed. Check the details and try again.";
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        {
+            return "The request could not be completed. Check the details and try again.";
+        }
+    }
+
+    private static async Task<ApiCallResult<TResponse>> ReadResultAsync<TResponse>(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            return new ApiCallResult<TResponse>(response.StatusCode, default,
+                await ReadErrorMessageAsync(response, cancellationToken));
+        }
+
+        if (response.Content.Headers.ContentLength == 0)
+        {
+            return new ApiCallResult<TResponse>(response.StatusCode, default, null);
+        }
+
+        try
+        {
+            var value = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cancellationToken);
+            return value is null
+                ? new ApiCallResult<TResponse>(response.StatusCode, default, "The API returned an empty response.")
+                : new ApiCallResult<TResponse>(response.StatusCode, value, null);
+        }
+        catch (JsonException)
+        {
+            return new ApiCallResult<TResponse>(response.StatusCode, default, "The API returned data that could not be read.");
+        }
+    }
+
+    private static ApiCallResult<TResponse> ApiUnavailable<TResponse>() =>
+        new(HttpStatusCode.ServiceUnavailable, default,
+            "The RaceDay API could not be reached. Check that it is running and try again.");
+}
+
+public sealed record ApiLoginResult(HttpStatusCode StatusCode, ApiUserResponse? User, string? ErrorMessage)
+{
+    public bool IsSuccess => User is not null && ErrorMessage is null;
+}
+
+public sealed record ApiOperationResult(HttpStatusCode StatusCode, string? ErrorMessage)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && ErrorMessage is null;
+}
+
+public sealed record ApiCallResult<T>(HttpStatusCode StatusCode, T? Value, string? ErrorMessage)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && ErrorMessage is null;
+}
+
+public sealed class ApiSessionExpiredException() : Exception("Your RaceDay session has expired.");
+
+public sealed record ApiUserResponse(int UserID, string FullName, string Email, string Role, bool HasProfilePicture);
+
+
+public sealed record ApiFileCallResult(
+    HttpStatusCode StatusCode,
+    byte[]? Content,
+    string? ContentType,
+    string? ErrorMessage)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && Content is { Length: > 0 } && ErrorMessage is null;
+}

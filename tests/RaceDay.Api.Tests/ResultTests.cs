@@ -92,6 +92,40 @@ public sealed class ResultTests
     }
 
     [Fact]
+    public async Task OrganiserCanListPublishedResultsForTheirOwnedEventOnly()
+    {
+        await using var db = CreateDbContext();
+        var current = await AddEnrolment(db, organiserId: 3, participantId: 8, DateTime.Now.AddDays(-2));
+        var other = await AddEnrolment(db, organiserId: 4, participantId: 9, DateTime.Now.AddDays(-2), "Autumn Race");
+        db.Results.AddRange(
+            CreateResult(current.Enrolment, TimeSpan.FromHours(2), 4),
+            CreateResult(other.Enrolment, TimeSpan.FromHours(3), 8));
+        await db.SaveChangesAsync();
+
+        var result = await CreateController(db, 3, UserRoles.Organiser)
+            .GetForEvent(current.Enrolment.EventID, CancellationToken.None);
+
+        var rows = Assert.IsType<List<RaceResultResponse>>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Single(rows);
+        Assert.Equal(current.Enrolment.EnrolmentID, rows[0].EnrolmentID);
+        Assert.Equal(4, rows[0].Position);
+    }
+
+    [Fact]
+    public async Task DifferentOrganiserCannotReadAnotherEventsResults()
+    {
+        await using var db = CreateDbContext();
+        var entry = await AddEnrolment(db, organiserId: 3, participantId: 8, DateTime.Now.AddDays(-2));
+        db.Results.Add(CreateResult(entry.Enrolment, TimeSpan.FromHours(2), 4));
+        await db.SaveChangesAsync();
+
+        var result = await CreateController(db, 4, UserRoles.Organiser)
+            .GetForEvent(entry.Enrolment.EventID, CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result.Result).StatusCode);
+    }
+
+    [Fact]
     public void ResultRequestRejectsNonPositiveTimeAndPosition()
     {
         var invalid = new CreateRaceResultRequest { EnrolmentID = 1, FinishTime = TimeSpan.Zero, Position = 1 };

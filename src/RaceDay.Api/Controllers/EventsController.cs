@@ -14,11 +14,59 @@ public sealed class EventsController(RaceDayDbContext dbContext) : ControllerBas
     /// <summary>Lists events for Participants and Organisers to browse.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EventResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<EventResponse>>> GetEvents(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<EventResponse>>> GetEvents(
+        [FromQuery] EventSearchRequest search,
+        CancellationToken cancellationToken)
     {
-        var events = await dbContext.Events.AsNoTracking()
+        var query = dbContext.Events.AsNoTracking().AsQueryable();
+        var term = search.Search?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(term))
+        {
+            query = query.Where(item => item.Name.ToLower().Contains(term)
+                || item.Location.ToLower().Contains(term)
+                || (item.Description != null && item.Description.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search.EventType))
+        {
+            var eventType = search.EventType.Trim().ToLowerInvariant();
+            query = query.Where(item => item.EventType.ToLower() == eventType);
+        }
+
+        if (search.FromDate.HasValue)
+        {
+            var fromDate = search.FromDate.Value.ToDateTime(TimeOnly.MinValue);
+            query = query.Where(item => item.EventDate >= fromDate);
+        }
+
+        if (search.ToDate.HasValue)
+        {
+            var dayAfter = search.ToDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            query = query.Where(item => item.EventDate < dayAfter);
+        }
+
+        var events = await query
             .OrderBy(item => item.EventDate)
             .Select(item => ToResponse(item))
+            .ToListAsync(cancellationToken);
+        return Ok(events);
+    }
+
+    /// <summary>Lists only the current Organiser's events with enrolment totals.</summary>
+    [HttpGet("mine")]
+    [SessionAuthorize(UserRoles.Organiser)]
+    [ProducesResponseType(typeof(IReadOnlyList<OrganiserEventSummaryResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IReadOnlyList<OrganiserEventSummaryResponse>>> GetMine(CancellationToken cancellationToken)
+    {
+        var organiserId = HttpContext.Session.GetInt32(SessionKeys.UserId)!.Value;
+        var events = await dbContext.Events.AsNoTracking()
+            .Where(item => item.OrganiserID == organiserId)
+            .OrderBy(item => item.EventDate)
+            .Select(item => new OrganiserEventSummaryResponse(
+                item.EventID, item.Name, item.Description, item.EventDate, item.Location,
+                item.Distance, item.EventType, item.EventBannerUrl, item.Enrolments.Count))
             .ToListAsync(cancellationToken);
         return Ok(events);
     }

@@ -1,0 +1,96 @@
+@model RaceDay.Web.Models.EventDetailsViewModel
+@{
+    ViewData["Title"] = Model.Event?.Name ?? "Event details";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
+}
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success" role="status">@Model.SuccessMessage</div>
+}
+@if (Model.Event is not null)
+{
+    <p><a asp-action="Index" class="link-primary">&larr; Back to upcoming events</a></p>
+    @if (!string.IsNullOrWhiteSpace(Model.Event.EventBannerUrl))
+    {
+        <img src="@Model.Event.EventBannerUrl" class="img-fluid rounded-4 event-detail-banner mb-4" alt="Banner for @Model.Event.Name" />
+    }
+    else
+    {
+        <div class="event-detail-fallback rounded-4 mb-4" role="img" aria-label="RaceDay event banner placeholder"></div>
+    }
+    <header class="mb-4">
+        <p class="text-uppercase fw-semibold text-primary mb-1">@Model.Event.EventType · @Model.Event.Distance.ToString("0.##") km</p>
+        <h1 class="display-6 fw-bold">@Model.Event.Name</h1>
+        <p class="lead">@Model.Event.Description</p>
+    </header>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body"><h2 class="h6">Date and time</h2><p class="mb-0">@Model.Event.EventDate.ToString("dddd, dd MMMM yyyy · HH:mm")</p></div></div></div>
+        <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body"><h2 class="h6">Location</h2><p class="mb-0">@Model.Event.Location</p></div></div></div>
+        <div class="col-12 col-md-4"><div class="card h-100"><div class="card-body"><h2 class="h6">Distance</h2><p class="mb-0">@Model.Event.Distance.ToString("0.##") km</p></div></div></div>
+    </div>
+
+    <div class="row g-4">
+        <section class="col-12 col-lg-6" aria-labelledby="categories-heading">
+            <h2 id="categories-heading" class="h3">Categories</h2>
+            @if (Model.Categories.Count == 0)
+            {
+                <p class="text-muted">No categories have been added to this event yet.</p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var category in Model.Categories)
+                    {
+                        <li class="list-group-item d-flex justify-content-between gap-3">
+                            <span><strong>@category.CategoryName</strong><br /><small class="text-muted">@(category.Distance?.ToString("0.##") is string km ? $"{km} km" : "Distance not specified")</small></span>
+                            <span class="text-muted text-end">@(category.MinAge.HasValue || category.MaxAge.HasValue ? $"Age {category.MinAge?.ToString() ?? "any"}–{category.MaxAge?.ToString() ?? "any"}" : "All ages")</span>
+                        </li>
+                    }
+                </ul>
+                <div class="card border-primary-subtle mt-3">
+                    <div class="card-body">
+                        <h3 class="h5">Enter this event</h3>
+                        <form asp-action="Enrol" method="post" data-api-form data-pending-label="Submitting entry…">
+                            <input type="hidden" name="EventID" value="@Model.Event.EventID" />
+                            <div class="mb-3">
+                                <label for="CategoryID" class="form-label">Choose a category</label>
+                                <select id="CategoryID" name="CategoryID" class="form-select" required>
+                                    <option value="">Select a category</option>
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        <option value="@category.CategoryID">@category.CategoryName</option>
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit entry</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </section>
+        <section class="col-12 col-lg-6" aria-labelledby="routes-heading">
+            <h2 id="routes-heading" class="h3">Routes</h2>
+            @if (Model.Routes.Count == 0)
+            {
+                <p class="text-muted">Route information has not been added yet.</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var route in Model.Routes)
+                    {
+                        <article class="list-group-item">
+                            <h3 class="h5">@route.RouteName <span class="badge text-bg-secondary">@route.Distance.ToString("0.##") km</span></h3>
+                            @if (!string.IsNullOrWhiteSpace(route.RouteDescription)) { <p>@route.RouteDescription</p> }
+                            @if (!string.IsNullOrWhiteSpace(route.RouteMapUrl)) { <a href="@route.RouteMapUrl" target="_blank" rel="noopener noreferrer">View route map<span class="visually-hidden"> (opens in a new tab)</span></a> }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+}

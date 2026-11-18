@@ -1,0 +1,81 @@
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in your local .env file}
+    ports:
+      - "127.0.0.1:14330:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+      - ./docs/RaceDay_Database.sql:/setup/RaceDay_Database.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data --debug /data/debug.log
+    ports:
+      - "127.0.0.1:10001:10000"
+    volumes:
+      - azurite-data:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: src/RaceDay.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Docker__DisableHttpsRedirection: "true"
+      ConnectionStrings__RaceDayDatabase: "Server=sql,1433;Database=RaceDayDB;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in your local .env file};Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=True"
+      BlobStorage__ConnectionString: "${BLOB_STORAGE_CONNECTION_STRING:-UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://azurite}"
+      BlobStorage__EventBannersContainerName: event-banners
+      BlobStorage__ProfilePicturesContainerName: profile-pictures
+      BlobStorage__EventBannersPublicBaseUrl: http://localhost:10001/devstoreaccount1
+    ports:
+      - "127.0.0.1:7107:8080"
+    depends_on:
+      sql:
+        condition: service_healthy
+      azurite:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: src/RaceDay.Web/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      RaceDayApi__BaseUrl: http://api:8080/
+      DataProtection__KeysPath: /var/raceday-data-protection-keys
+    ports:
+      - "127.0.0.1:5157:8080"
+    volumes:
+      - web-data-protection-keys:/var/raceday-data-protection-keys
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sql-data:
+  azurite-data:
+  web-data-protection-keys:

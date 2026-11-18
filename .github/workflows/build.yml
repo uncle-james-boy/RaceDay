@@ -2,9 +2,9 @@ name: RaceDay CI Build and Validate
 
 on:
   push:
-    branches: [main, part2]
+    branches: [main, part2, part3]
   pull_request:
-    branches: [main, part2]
+    branches: [main, part2, part3]
 
 jobs:
   part1-validation:
@@ -36,7 +36,7 @@ jobs:
         uses: avto-dev/markdown-lint@v1
         with:
           config: '.markdownlint.json'
-          args: 'README.md docs/API_Endpoint_Plan.md docs/Part2_Implementation_Blueprint.md docs/Part2_Rubric_Checklist.md docs/Video_Presentation_Guide.md docs/Part2_Video_Presentation_Guide.md'
+          args: 'README.md docs/API_Endpoint_Plan.md docs/DOCKER.md docs/Part2_Implementation_Blueprint.md docs/Part2_Rubric_Checklist.md docs/Part3_Rubric_Checklist.md docs/Video_Presentation_Guide.md docs/Part2_Video_Presentation_Guide.md'
 
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
@@ -51,3 +51,9 @@ jobs:
 
       - name: Run automated tests
         run: dotnet test RaceDay.sln --no-build --no-restore --configuration Release
+
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example config --quiet
+
+      - name: Build API and Web Docker images
+        run: docker compose --env-file .env.example build api web

@@ -1,0 +1,42 @@
+@model RaceDay.Web.Models.ParticipantProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+<h1 class="mb-3">My Profile</h1>
+@if (Model.ErrorMessage is not null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+@if (Model.SuccessMessage is not null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+@if (Model.Profile is not null)
+{
+    <div class="row g-4">
+        <section class="col-12 col-lg-5" aria-labelledby="profile-details-heading">
+            <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                <h2 id="profile-details-heading" class="h4">Account details</h2>
+                @if (Model.Profile.HasProfilePicture)
+                {
+                    <img src="@Url.Action("ProfilePicture", "Participant")" class="profile-picture mb-3" alt="Profile picture for @Model.Profile.FullName" />
+                }
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Name</dt><dd class="col-sm-8">@Model.Profile.FullName</dd>
+                    <dt class="col-sm-4">Email</dt><dd class="col-sm-8">@Model.Profile.Email</dd>
+                    <dt class="col-sm-4">Role</dt><dd class="col-sm-8">@Model.Profile.Role</dd>
+                    <dt class="col-sm-4">Joined</dt><dd class="col-sm-8">@Model.Profile.CreatedAt.ToString("dd MMM yyyy")</dd>
+                </dl>
+            </div></div>
+        </section>
+        <section class="col-12 col-lg-7" aria-labelledby="edit-profile-heading">
+            <div class="card border-0 shadow-sm"><div class="card-body">
+                <h2 id="edit-profile-heading" class="h4">Edit profile</h2>
+                <form asp-action="UpdateProfile" method="post" enctype="multipart/form-data" data-api-form data-pending-label="Saving profile…">
+                    <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                    <div class="mb-3"><label asp-for="Edit.FullName" class="form-label"></label><input asp-for="Edit.FullName" class="form-control" autocomplete="name" /><span asp-validation-for="Edit.FullName" class="text-danger"></span></div>
+                    <div class="mb-3"><label asp-for="Edit.ProfilePictureFile" class="form-label"></label><input asp-for="Edit.ProfilePictureFile" class="form-control" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" /><span asp-validation-for="Edit.ProfilePictureFile" class="text-danger"></span><div class="form-text">JPEG, PNG, or WebP; maximum 2 MB. Your picture is stored privately and only you can view it.</div></div>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </form>
+            </div></div>
+        </section>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

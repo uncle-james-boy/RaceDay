@@ -14,6 +14,7 @@ using RaceDay.Api.Authentication;
 using RaceDay.Api.Controllers;
 using RaceDay.Api.Data;
 using RaceDay.Api.Data.Entities;
+using RaceDay.Api.Services;
 using Xunit;
 
 namespace RaceDay.Api.Tests;
@@ -33,7 +34,7 @@ public sealed class ApiSessionFlowTests
         Assert.Equal(HttpStatusCode.OK, swaggerResponse.StatusCode);
         using var swagger = JsonDocument.Parse(await swaggerResponse.Content.ReadAsStringAsync());
         var paths = swagger.RootElement.GetProperty("paths");
-        Assert.Equal(23, CountOperations(paths));
+        Assert.Equal(28, CountOperations(paths));
         foreach (var path in paths.EnumerateObject())
         {
             foreach (var operation in path.Value.EnumerateObject())
@@ -48,6 +49,7 @@ public sealed class ApiSessionFlowTests
         Assert.Contains("Creates an event owned by the signed-in Organiser.",
             paths.GetProperty("/api/events").GetProperty("post").GetProperty("summary").GetString());
         Assert.Equal(1, paths.GetProperty("/api/events").GetProperty("post").GetProperty("security").GetArrayLength());
+        Assert.Equal(1, paths.GetProperty("/api/events/{eventId}/banner").GetProperty("post").GetProperty("security").GetArrayLength());
         Assert.False(paths.GetProperty("/api/events").GetProperty("get").TryGetProperty("security", out _));
 
         var publicEvents = await anonymous.GetAsync("/api/events");
@@ -87,8 +89,7 @@ public sealed class ApiSessionFlowTests
         Assert.False((await participantProfile.Content.ReadAsStringAsync()).Contains("PasswordHash", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(HttpStatusCode.OK, (await participant.PutAsJsonAsync("/api/users/profile", new
         {
-            fullName = "Alex Updated",
-            profilePictureUrl = "https://example.com/alex.png"
+            fullName = "Alex Updated"
         })).StatusCode);
 
         var forbiddenCreate = await participant.PostAsJsonAsync("/api/events", ValidEventBody());
@@ -175,8 +176,7 @@ public sealed class ApiSessionFlowTests
 
         Assert.Equal(HttpStatusCode.BadRequest, (await participant.PutAsJsonAsync("/api/users/profile", new
         {
-            fullName = "Alex Updated",
-            profilePictureUrl = "not-a-url"
+            fullName = ""
         })).StatusCode);
 
         var mismatch = await participant.PostAsJsonAsync("/api/enrolments", new
@@ -286,6 +286,7 @@ public sealed class ApiSessionFlowTests
         builder.Services.AddDbContext<RaceDayDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+        builder.Services.AddSingleton<IBlobStorageService, UnusedBlobStorage>();
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
@@ -305,6 +306,35 @@ public sealed class ApiSessionFlowTests
         app.UseAuthorization();
         app.MapControllers();
         return app;
+    }
+
+    private sealed class UnusedBlobStorage : IBlobStorageService
+    {
+        public Task<Uri> UploadAsync(
+            RaceDayBlobContainer container,
+            string blobName,
+            Stream content,
+            string contentType,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("Blob storage is not used by this integration test.");
+
+        public Task<StoredBlob?> DownloadAsync(
+            RaceDayBlobContainer container,
+            string blobName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<StoredBlob?>(null);
+
+        public Task<bool> DeleteIfExistsAsync(
+            RaceDayBlobContainer container,
+            string blobName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public bool TryGetBlobNameFromUri(RaceDayBlobContainer container, Uri blobUri, out string blobName)
+        {
+            blobName = string.Empty;
+            return false;
+        }
     }
 
     private static HttpClient CreateSessionClient(string address, CookieContainer cookies) => new(

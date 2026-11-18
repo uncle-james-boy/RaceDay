@@ -67,3 +67,47 @@ public sealed record EventResponse(
     decimal Distance,
     string EventType,
     string? EventBannerUrl);
+
+/// <summary>An Organiser-owned event and its enrolment count.</summary>
+public sealed record OrganiserEventSummaryResponse(
+    int EventID,
+    string Name,
+    string? Description,
+    DateTime EventDate,
+    string Location,
+    decimal Distance,
+    string EventType,
+    string? EventBannerUrl,
+    int EnrolmentCount);
+
+/// <summary>Optional filters for public event browsing.</summary>
+public sealed class EventSearchRequest : IValidatableObject
+{
+    [StringLength(100)]
+    public string? Search { get; init; }
+
+    public string? EventType { get; init; }
+
+    public DateOnly? FromDate { get; init; }
+
+    public DateOnly? ToDate { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!string.IsNullOrWhiteSpace(EventType)
+            && EventType.Trim().ToLowerInvariant() is not "run" and not "walk" and not "cycle")
+        {
+            yield return new ValidationResult("EventType must be Run, Walk, or Cycle.", [nameof(EventType)]);
+        }
+
+        if (FromDate.HasValue && ToDate.HasValue && FromDate > ToDate)
+        {
+            yield return new ValidationResult("FromDate must be on or before ToDate.", [nameof(FromDate), nameof(ToDate)]);
+        }
+
+        if (ToDate == DateOnly.MaxValue)
+        {
+            yield return new ValidationResult("ToDate must be earlier than 9999-12-31.", [nameof(ToDate)]);
+        }
+    }
+}

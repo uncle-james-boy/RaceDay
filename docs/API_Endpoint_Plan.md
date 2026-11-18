@@ -1,8 +1,8 @@
 # RaceDay API Endpoint Plan
 
-This document records the Part 1 contract implemented by the Part 2 API, plus the two owner-scoped
-read operations added in Part 3 to support the organiser dashboard and published-results view.
-The original Part 2 contract has 23 operations; the current API has 25. The data model is in
+This document records the API contracts used by the Part 2 and Part 3 applications. Part 3 adds
+two owner-scoped organiser reads, one event-banner upload, and two authenticated profile-picture
+operations. The original Part 2 contract has 23 operations; the current API has 28. The data model is in
 [`schema.dbml`](../schema.dbml) and [`RaceDay_Database.sql`](RaceDay_Database.sql). The six
 entities are Users, Events, Categories, EventRoutes, Enrolments, and Results.
 
@@ -29,7 +29,9 @@ hashed before storage. No JWT is issued.
 | POST | `/api/auth/login` | Verifies credentials and starts a server-side session. | Public | `{ email, password }` | 200 OK with session cookie; 400 invalid fields; 401 bad credentials |
 | POST | `/api/auth/logout` | Clears the current session. | Authenticated | None | 204 No Content; 401 no session |
 | GET | `/api/users/profile` | Reads the caller's profile. | Authenticated | None | 200 OK; 401 no session |
-| PUT | `/api/users/profile` | Updates the caller's profile. | Authenticated | `{ fullName, profilePictureUrl }` | 200 OK; 400 invalid fields; 401 no session |
+| PUT | `/api/users/profile` | Updates the caller's profile details. A caller cannot submit a Blob URL. | Authenticated | `{ fullName }` | 200 OK; 400 invalid fields; 401 no session |
+| POST | `/api/users/profile/picture` | Uploads or replaces the signed-in user's private profile picture. Accepts JPEG, PNG, or WebP after content validation; maximum 2 MB. The API streams the image only through the authenticated retrieval route. | Authenticated; own account is selected from the session | Multipart form field `file` | 200 OK; 400 invalid image/size; 401 no session; 500 database save failed; 502 storage unavailable |
+| GET | `/api/users/profile/picture` | Streams the caller's private profile picture; does not return a public Blob URL. | Authenticated; own account is selected from the session | None | 200 image; 401 no session; 404 no image; 502 storage unavailable |
 
 ## Events
 
@@ -41,6 +43,7 @@ hashed before storage. No JWT is issued.
 | POST | `/api/events` | Creates an event owned by the caller. | Organiser | `{ name, description, eventDate, location, distance, eventType }` | 201 Created; 400 invalid fields; 401 no session; 403 wrong role |
 | PUT | `/api/events/{eventId}` | Updates an event owned by the caller. | Owner Organiser | Same as event create | 200 OK; 400 invalid fields; 401 no session; 403 not owner; 404 not found |
 | DELETE | `/api/events/{eventId}` | Deletes an owned event when no dependent records prevent deletion. | Owner Organiser | None | 204 No Content; 401 no session; 403 not owner; 404 not found; 409 event has related records |
+| POST | `/api/events/{eventId}/banner` | Uploads or replaces the owned event's public banner after JPEG, PNG, or WebP content validation; maximum 5 MB. The server generates the Blob name and stores the resulting URL. | Owner Organiser | Multipart form field `file` | 200 OK; 400 invalid image/size; 401 no session; 403 not owner; 404 event not found; 500 database save failed; 502 storage unavailable |
 
 ## Categories and routes
 

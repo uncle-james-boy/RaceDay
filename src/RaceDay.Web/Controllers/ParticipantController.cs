@@ -9,6 +9,8 @@ namespace RaceDay.Web.Controllers;
 [RaceDayAuthorize("Participant")]
 public sealed class ParticipantController(RaceDayApiClient api) : Controller
 {
+    public const long MaximumProfilePictureSizeBytes = 2L * 1024 * 1024;
+    private const long MultipartOverheadBytes = 64L * 1024;
     [HttpGet("")]
     public async Task<IActionResult> Index(
         string? search,
@@ -156,26 +158,35 @@ public sealed class ParticipantController(RaceDayApiClient api) : Controller
             Profile = result.Value,
             Edit = new UpdateParticipantProfileModel
             {
-                FullName = result.Value.FullName,
-                ProfilePictureUrl = result.Value.ProfilePictureUrl
+                FullName = result.Value.FullName
             },
-            SuccessMessage = TempData["ParticipantSuccess"] as string
+            SuccessMessage = TempData["ParticipantSuccess"] as string,
+            ErrorMessage = TempData["ParticipantError"] as string
         });
     }
 
     [HttpPost("profile")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(MaximumProfilePictureSizeBytes + MultipartOverheadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaximumProfilePictureSizeBytes)]
     public async Task<IActionResult> UpdateProfile(
         [Bind(Prefix = "Edit")] UpdateParticipantProfileModel edit,
         CancellationToken cancellationToken)
     {
+        if (edit.ProfilePictureFile is { } file
+            && (file.Length == 0 || file.Length > MaximumProfilePictureSizeBytes))
+        {
+            ModelState.AddModelError("Edit.ProfilePictureFile",
+                "Choose a non-empty JPEG, PNG, or WebP image no larger than 2 MB.");
+        }
+
         if (!ModelState.IsValid)
         {
             return await ProfileForEditAsync(edit, cancellationToken);
         }
 
-        var result = await api.PutJsonAsync<UpdateParticipantProfileModel, ParticipantProfile>(
-            "api/users/profile", edit, cancellationToken);
+        var result = await api.PutJsonAsync<object, ParticipantProfile>(
+            "api/users/profile", new { edit.FullName }, cancellationToken);
         if (!result.IsSuccess || result.Value is null)
         {
             var page = await LoadProfilePageAsync(edit, cancellationToken);
@@ -183,8 +194,36 @@ public sealed class ParticipantController(RaceDayApiClient api) : Controller
             return View("Profile", page);
         }
 
+        if (edit.ProfilePictureFile is not null)
+        {
+            var pictureResult = await api.PostFileAsync<ProfilePictureUploadResponse>(
+                "api/users/profile/picture", edit.ProfilePictureFile, cancellationToken);
+            if (!pictureResult.IsSuccess)
+            {
+                TempData["ParticipantError"] =
+                    $"Your profile details were saved, but the picture upload failed. {pictureResult.ErrorMessage ?? "Choose a valid image and try again."}";
+                return RedirectToAction(nameof(Profile));
+            }
+        }
+
         TempData["ParticipantSuccess"] = "Your profile was updated.";
         return RedirectToAction(nameof(Profile));
+    }
+
+    [HttpGet("profile/picture")]
+    public async Task<IActionResult> ProfilePicture(CancellationToken cancellationToken)
+    {
+        var result = await api.GetFileAsync("api/users/profile/picture", cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return result.StatusCode == System.Net.HttpStatusCode.NotFound
+                ? NotFound()
+                : StatusCode(StatusCodes.Status502BadGateway);
+        }
+
+        Response.Headers.CacheControl = "no-store, private";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(result.Content!, result.ContentType!);
     }
 
     private async Task<IActionResult> ProfileForEditAsync(
@@ -201,7 +240,8 @@ public sealed class ParticipantController(RaceDayApiClient api) : Controller
         {
             Profile = result.Value,
             Edit = edit,
-            ErrorMessage = result.IsSuccess ? null : result.ErrorMessage
+            SuccessMessage = TempData["ParticipantSuccess"] as string,
+            ErrorMessage = result.IsSuccess ? TempData["ParticipantError"] as string : result.ErrorMessage
         };
     }
 }

@@ -20,7 +20,9 @@ public sealed record ParticipantRaceResult(int ResultID, int EnrolmentID, int Ev
     int Position, DateTime CapturedAt);
 
 public sealed record ParticipantProfile(int UserID, string FullName, string Email,
-    string Role, string? ProfilePictureUrl, DateTime CreatedAt);
+    string Role, bool HasProfilePicture, DateTime CreatedAt);
+
+public sealed record ProfilePictureUploadResponse(bool HasProfilePicture);
 
 public sealed class ParticipantHomeViewModel
 {
@@ -62,9 +64,8 @@ public sealed class UpdateParticipantProfileModel
     [Display(Name = "Full name")]
     public string FullName { get; set; } = string.Empty;
 
-    [StringLength(500), Url]
-    [Display(Name = "Profile picture URL")]
-    public string? ProfilePictureUrl { get; set; }
+    [Display(Name = "Profile picture")]
+    public IFormFile? ProfilePictureFile { get; set; }
 }
 
 public sealed class EnrolParticipantModel

@@ -11,7 +11,7 @@ public sealed class ExpiredApiSessionTests
     public async Task ApiUnauthorizedClearsMvcSessionAndRedirectsToLoginWithNotice()
     {
         var (session, _) = TestSessions.Create();
-        session.SignIn(new ApiUserResponse(9, "Demo", "demo@example.test", "Participant", null), "expired-cookie");
+        session.SignIn(new ApiUserResponse(9, "Demo", "demo@example.test", "Participant", false), "expired-cookie");
         using var client = new HttpClient(new UnauthorizedHandler())
         {
             BaseAddress = new Uri("https://localhost:7107/")

@@ -155,29 +155,115 @@ public sealed class ParticipantControllerTests
     {
         var handler = new RecordingHandler((request, _) => Task.FromResult(request.Method == HttpMethod.Put
             ? JsonResponse(HttpStatusCode.OK,
-                """{"userID":44,"fullName":"Updated Runner","email":"runner@example.test","role":"Participant","profilePictureUrl":"https://example.test/me.jpg","createdAt":"2026-01-01T00:00:00Z"}""")
-            : JsonResponse(HttpStatusCode.OK,
-                """{"userID":44,"fullName":"Demo Runner","email":"runner@example.test","role":"Participant","profilePictureUrl":null,"createdAt":"2026-01-01T00:00:00Z"}""")));
+                """{"userID":44,"fullName":"Updated Runner","email":"runner@example.test","role":"Participant","hasProfilePicture":true,"createdAt":"2026-01-01T00:00:00Z"}""")
+            : request.Method == HttpMethod.Post
+                ? JsonResponse(HttpStatusCode.OK, """{"hasProfilePicture":true}""")
+                : JsonResponse(HttpStatusCode.OK,
+                    """{"userID":44,"fullName":"Demo Runner","email":"runner@example.test","role":"Participant","hasProfilePicture":false,"createdAt":"2026-01-01T00:00:00Z"}""")));
         var controller = CreateController(handler);
 
         var getResult = await controller.Profile(CancellationToken.None);
         var page = Assert.IsType<ParticipantProfileViewModel>(Assert.IsType<ViewResult>(getResult).Model);
         Assert.Equal("runner@example.test", page.Profile!.Email);
         Assert.Equal("Demo Runner", page.Edit.FullName);
+        Assert.False(page.Profile.HasProfilePicture);
+
+        using var imageStream = new MemoryStream([1, 2, 3]);
+        var file = new FormFile(imageStream, 0, imageStream.Length, "Edit.ProfilePictureFile", "profile.png")
+        {
+            Headers = new HeaderDictionary { ["Content-Type"] = "image/png" }
+        };
 
         var updateResult = await controller.UpdateProfile(new UpdateParticipantProfileModel
         {
             FullName = "Updated Runner",
-            ProfilePictureUrl = "https://example.test/me.jpg"
+            ProfilePictureFile = file
         }, CancellationToken.None);
 
         Assert.Equal(nameof(ParticipantController.Profile), Assert.IsType<RedirectToActionResult>(updateResult).ActionName);
-        Assert.Equal(HttpMethod.Put, handler.LastMethod);
-        Assert.Equal("/api/users/profile", handler.LastPath);
+        Assert.Equal(HttpMethod.Post, handler.LastMethod);
+        Assert.Equal("/api/users/profile/picture", handler.LastPath);
         Assert.Equal("session-participant", handler.LastApiCookie);
-        using var body = JsonDocument.Parse(handler.LastBody!);
-        Assert.False(body.RootElement.TryGetProperty("userID", out _));
-        Assert.False(body.RootElement.TryGetProperty("role", out _));
+        Assert.Equal("multipart/form-data", handler.LastContentType);
+        Assert.True(handler.LastBody!.Contains("name=\"file\"", StringComparison.Ordinal)
+            || handler.LastBody.Contains("name=file", StringComparison.Ordinal));
+        Assert.Contains("profile.png", handler.LastBody);
+        Assert.Contains("/api/users/profile", handler.RequestPaths);
+    }
+
+    [Fact]
+    public async Task ProfilePictureIsProxiedThroughTheAuthenticatedApiSession()
+    {
+        var handler = new RecordingHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent([1, 2, 3])
+            {
+                Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg") }
+            }
+        }));
+        var controller = CreateController(handler);
+
+        var result = await controller.ProfilePicture(CancellationToken.None);
+
+        var image = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("image/jpeg", image.ContentType);
+        Assert.Equal(new byte[] { 1, 2, 3 }, image.FileContents);
+        Assert.Equal("/api/users/profile/picture", handler.LastPath);
+        Assert.Equal("session-participant", handler.LastApiCookie);
+        Assert.Equal("no-store, private", controller.Response.Headers.CacheControl);
+    }
+
+    [Fact]
+    public async Task ProfilePictureMissingInApiReturnsNotFound()
+    {
+        var handler = new RecordingHandler((_, _) => Task.FromResult(JsonResponse(HttpStatusCode.NotFound,
+            """{"message":"No profile picture."}""")));
+        var controller = CreateController(handler);
+
+        var result = await controller.ProfilePicture(CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task ProfilePictureUploadFailureIsShownAfterProfileDetailsSave()
+    {
+        var handler = new RecordingHandler((request, _) => Task.FromResult(request.Method == HttpMethod.Put
+            ? JsonResponse(HttpStatusCode.OK,
+                """{"userID":44,"fullName":"Updated Runner","email":"runner@example.test","role":"Participant","hasProfilePicture":false,"createdAt":"2026-01-01T00:00:00Z"}""")
+            : JsonResponse(HttpStatusCode.BadGateway, """{"message":"Storage is unavailable."}""")));
+        var controller = CreateController(handler);
+        using var imageStream = new MemoryStream([1, 2, 3]);
+        var file = new FormFile(imageStream, 0, imageStream.Length, "Edit.ProfilePictureFile", "profile.png");
+
+        var result = await controller.UpdateProfile(new UpdateParticipantProfileModel
+        {
+            FullName = "Updated Runner", ProfilePictureFile = file
+        }, CancellationToken.None);
+
+        Assert.Equal(nameof(ParticipantController.Profile), Assert.IsType<RedirectToActionResult>(result).ActionName);
+        Assert.Contains("picture upload failed", Assert.IsType<string>(controller.TempData["ParticipantError"]), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("/api/users/profile/picture", handler.LastPath);
+    }
+
+    [Fact]
+    public async Task ProfilePictureUploadOverTwoMegabytesIsRejectedBeforeApiCalls()
+    {
+        var handler = new RecordingHandler((_, _) => Task.FromResult(JsonResponse(HttpStatusCode.OK, "{}")));
+        var controller = CreateController(handler);
+        using var stream = new MemoryStream([1]);
+        var file = new FormFile(stream, 0, ParticipantController.MaximumProfilePictureSizeBytes + 1,
+            "Edit.ProfilePictureFile", "large.png");
+
+        var result = await controller.UpdateProfile(new UpdateParticipantProfileModel
+        {
+            FullName = "Runner", ProfilePictureFile = file
+        }, CancellationToken.None);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Equal("/api/users/profile", Assert.Single(handler.RequestPaths));
+        Assert.Equal(HttpMethod.Get, handler.LastMethod);
+        Assert.Contains("2 MB", Assert.Single(controller.ModelState["Edit.ProfilePictureFile"]!.Errors).ErrorMessage);
     }
 
     [Fact]
@@ -192,7 +278,7 @@ public sealed class ParticipantControllerTests
     private static ParticipantController CreateController(RecordingHandler handler)
     {
         var (session, _) = TestSessions.Create();
-        session.SignIn(new ApiUserResponse(44, "Demo Runner", "runner@example.test", "Participant", null), "session-participant");
+        session.SignIn(new ApiUserResponse(44, "Demo Runner", "runner@example.test", "Participant", false), "session-participant");
         var context = new DefaultHttpContext();
         var controller = new ParticipantController(new RaceDayApiClient(
             new HttpClient(handler) { BaseAddress = new Uri("https://localhost:7107/") }, session))
@@ -216,14 +302,18 @@ public sealed class ParticipantControllerTests
         public string? LastBody { get; private set; }
         public string? LastApiCookie { get; private set; }
         public HttpMethod? LastMethod { get; private set; }
+        public string? LastContentType { get; private set; }
+        public List<string> RequestPaths { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             LastPath = request.RequestUri!.AbsolutePath;
+            RequestPaths.Add(LastPath);
             LastUri = request.RequestUri.PathAndQuery;
             LastMethod = request.Method;
+            LastContentType = request.Content?.Headers.ContentType?.MediaType;
             LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             LastApiCookie = request.Headers.TryGetValues("Cookie", out var cookies)
                 ? cookies.Single().Split('=', 2)[1]

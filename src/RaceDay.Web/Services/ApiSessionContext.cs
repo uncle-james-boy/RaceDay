@@ -37,6 +37,12 @@ public sealed class ApiSessionContext(Microsoft.AspNetCore.Http.ISession current
 
     internal static bool IsValidApiCookieValue(string value) =>
         value.Length is > 0 and <= 512
-        && value.All(character => char.IsAsciiLetterOrDigit(character)
-            || character is '-' or '_' or '.' or '~' or '+' or '/' or '=');
+        && value.All(character => IsCookieOctet(character));
+
+    internal static bool IsCookieOctet(int codePoint) =>
+        codePoint == 0x21
+        || codePoint is >= 0x23 and <= 0x2B
+        || codePoint is >= 0x2D and <= 0x3A
+        || codePoint is >= 0x3C and <= 0x5B
+        || codePoint is >= 0x5D and <= 0x7E;
 }

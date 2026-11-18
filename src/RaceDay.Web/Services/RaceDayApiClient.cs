@@ -1,14 +1,20 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Globalization;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Http;
 using RaceDay.Web.Models;
 
 namespace RaceDay.Web.Services;
 
 /// <summary>Sends requests to the existing RaceDay API.</summary>
-public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext session)
+public sealed class RaceDayApiClient(
+    HttpClient httpClient,
+    ApiSessionContext session,
+    ILogger<RaceDayApiClient>? logger = null)
 {
     public Task<ApiCallResult<EventCard[]>> GetEventsAsync(
         string? search,
@@ -42,6 +48,42 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
         }
     }
 
+    public async Task<ApiFileCallResult> GetFileAsync(
+        string relativeUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Get, relativeUri, cancellationToken: cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new ApiFileCallResult(response.StatusCode, null, null,
+                    await ReadErrorMessageAsync(response, cancellationToken));
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            if (contentType is not "image/jpeg" and not "image/png" and not "image/webp")
+            {
+                return new ApiFileCallResult(response.StatusCode, null, null,
+                    "The API returned an unsupported image format.");
+            }
+
+            var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            if (content.Length == 0 || content.Length > 2 * 1024 * 1024)
+            {
+                return new ApiFileCallResult(response.StatusCode, null, null,
+                    "The API returned an invalid profile picture.");
+            }
+
+            return new ApiFileCallResult(response.StatusCode, content, contentType, null);
+        }
+        catch (HttpRequestException)
+        {
+            return new ApiFileCallResult(HttpStatusCode.ServiceUnavailable, null, null,
+                "The RaceDay API could not be reached. Check that it is running and try again.");
+        }
+    }
+
     public async Task<ApiCallResult<TResponse>> PostJsonAsync<TRequest, TResponse>(
         string relativeUri,
         TRequest body,
@@ -50,6 +92,31 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
         try
         {
             using var content = JsonContent.Create(body);
+            using var response = await SendAsync(HttpMethod.Post, relativeUri, content, cancellationToken);
+            return await ReadResultAsync<TResponse>(response, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiUnavailable<TResponse>();
+        }
+    }
+
+    public async Task<ApiCallResult<TResponse>> PostFileAsync<TResponse>(
+        string relativeUri,
+        IFormFile file,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var fileStream = file.OpenReadStream();
+            using var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = MediaTypeHeaderValue.TryParse(file.ContentType, out var parsedType)
+                ? parsedType
+                : new MediaTypeHeaderValue("application/octet-stream");
+            content.Add(fileContent, "file", Path.GetFileName(file.FileName.Replace('\\', '/')));
+
             using var response = await SendAsync(HttpMethod.Post, relativeUri, content, cancellationToken);
             return await ReadResultAsync<TResponse>(response, cancellationToken);
         }
@@ -222,7 +289,7 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
         }
     }
 
-    private static string ReadSessionCookie(HttpResponseMessage response)
+    private string ReadSessionCookie(HttpResponseMessage response)
     {
         if (response.Headers.TryGetValues("Set-Cookie", out var headers))
         {
@@ -237,11 +304,26 @@ public sealed class RaceDayApiClient(HttpClient httpClient, ApiSessionContext se
                     continue;
                 }
 
-                var value = pair[(separator + 1)..].Trim();
+                var value = pair[(separator + 1)..];
                 if (ApiSessionContext.IsValidApiCookieValue(value))
                 {
                     return value;
                 }
+
+                var disallowedCodePoints = value.EnumerateRunes()
+                    .Select(rune => rune.Value)
+                    .Where(codePoint => !ApiSessionContext.IsCookieOctet(codePoint))
+                    .Distinct()
+                    .OrderBy(codePoint => codePoint)
+                    .ToArray();
+                var containsDisallowedCharacters = disallowedCodePoints.Length > 0;
+                var exceedsCharacterLimit = value.Length > 512;
+                logger?.LogWarning(
+                    "API session cookie rejected. ValueLength={CookieValueLength}; ContainsDisallowedCharacters={ContainsDisallowedCharacters}; Exceeds512CharacterLimit={ExceedsCharacterLimit}; DisallowedUnicodeCodePoints=[{DisallowedUnicodeCodePoints}].",
+                    value.Length,
+                    containsDisallowedCharacters,
+                    exceedsCharacterLimit,
+                    string.Join(",", disallowedCodePoints));
 
                 throw new InvalidOperationException("The API returned an invalid session cookie.");
             }
@@ -343,4 +425,14 @@ public sealed record ApiCallResult<T>(HttpStatusCode StatusCode, T? Value, strin
 
 public sealed class ApiSessionExpiredException() : Exception("Your RaceDay session has expired.");
 
-public sealed record ApiUserResponse(int UserID, string FullName, string Email, string Role, string? ProfilePictureUrl);
+public sealed record ApiUserResponse(int UserID, string FullName, string Email, string Role, bool HasProfilePicture);
+
+
+public sealed record ApiFileCallResult(
+    HttpStatusCode StatusCode,
+    byte[]? Content,
+    string? ContentType,
+    string? ErrorMessage)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and < 300 && Content is { Length: > 0 } && ErrorMessage is null;
+}

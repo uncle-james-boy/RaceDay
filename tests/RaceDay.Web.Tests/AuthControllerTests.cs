@@ -151,7 +151,7 @@ public sealed class AuthControllerTests
     };
 
     private static ApiUserResponse TestUser(string role) =>
-        new(22, "Demo User", "person@example.test", role, null);
+        new(22, "Demo User", "person@example.test", role, false);
 
     private static HttpResponseMessage LoginResponse(string role)
     {

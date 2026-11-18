@@ -71,7 +71,7 @@ public sealed class ApiSessionIsolationTests
         var handler = new UserSessionHandler();
         using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:7107/") };
         var (session, _) = TestSessions.Create();
-        session.SignIn(new ApiUserResponse(8, "Participant", "p@example.test", "Participant", null), "private-session");
+        session.SignIn(new ApiUserResponse(8, "Participant", "p@example.test", "Participant", false), "private-session");
         var api = new RaceDayApiClient(httpClient, session);
 
         using var response = await api.SendUnauthenticatedAsync(HttpMethod.Post, "api/auth/register", JsonContent.Create(new { }));
@@ -104,7 +104,7 @@ public sealed class ApiSessionIsolationTests
                     isOrganiser ? "Organiser" : "Participant",
                     email,
                     isOrganiser ? "Organiser" : "Participant",
-                    null);
+                    false);
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = JsonContent.Create(user)
@@ -125,7 +125,7 @@ public sealed class ApiSessionIsolationTests
             HttpRequestMessage request,
             CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(new ApiUserResponse(41, "Participant", "p@example.test", "Participant", null))
+                Content = JsonContent.Create(new ApiUserResponse(41, "Participant", "p@example.test", "Participant", false))
             });
     }
 }

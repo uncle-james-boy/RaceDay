@@ -82,6 +82,14 @@ The API launch profile normally serves Swagger at `https://localhost:7107/swagge
 
 Automated tests use EF Core InMemory and test HTTP clients; they do not prove a live SQL Server or Azurite connection. The checked-in CI screenshots below are from earlier Part 1/Part 2 runs and do not verify Part 3. The workflow includes `part3`, Docker Compose configuration validation, and API/Web image builds. GitHub Actions [Run #15](https://github.com/uncle-james-boy/RaceDay/actions/runs/44269215155) succeeded on commit `2289cb8`. A screenshot of that Part 3 run has not yet been saved in the repository. The `part3` branch contains 17 meaningful commits relative to `origin/main`; the rubric target is 20.
 
+### Part 3 — GitHub Actions
+
+The following screenshot shows the successful GitHub Actions workflow for the Part 3 implementation.
+
+![Successful Part 3 GitHub Actions workflow](docs/evidence/part3-ci-success.png)
+
+[View the successful Part 3 GitHub Actions run](https://github.com/uncle-james-boy/RaceDay/actions/runs/44269215155)
+
 **GitHub Actions evidence for commit `53b2901`:** [Run #8](https://github.com/uncle-james-boy/RaceDay/actions/runs/39057052022)
 
 ![GitHub Actions run summary for commit 53b2901](docs/evidence/part1-ci-success.png.png)
